@@ -1,0 +1,91 @@
+title: "HealthCy NER. Detect health conditions in supplement reviews."
+description: "This project trains a NER with the labels `CONDITION` and `BENEFIT`"
+# Variables can be referenced across the project.yml using ${vars.var_name}
+vars:
+  version: "0.0.0"
+
+  name: "ner_condition"
+  config: "config.cfg"
+  train: "train"
+  dev: "dev"
+  test: "test"
+
+# These are the directories that the project needs. The project CLI will make
+# sure that they always exist.
+directories: ["assets", "training", "configs", "scripts"]
+
+# Assets that should be downloaded or available in the directory. We're shipping
+# them with the project, so they won't have to be downloaded. But the
+# 'project assets' command still lets you verify that the checksums match.
+assets:
+  - dest: "assets/${vars.train}.spacy"
+    description: "Training data exported from Prodigy"
+  - dest: "assets/${vars.dev}.spacy"
+    description: "Development data exported from Prodigy"
+  - dest: "assets/${vars.test}.spacy"
+    description: "Test data exported from Prodigy"
+
+
+# Workflows are sequences of commands (see below) executed in order. You can
+# run them via "spacy project run [workflow]". If a commands's inputs/outputs
+# haven't changed, it won't be re-run.
+workflows:
+  all:
+    - install
+    - train
+    - evaluate
+
+
+
+# Project commands, specified in a style similar to CI config files (e.g. Azure
+# pipelines). The name is the command name that lets you trigger the command
+# via "spacy project run [command] [path]". The help message is optional and
+# shown when executing "spacy project run [optional command] [path] --help".
+commands:
+  - name: "install"
+    help: "Install dependencies"
+    script:
+      - "python -m spacy download en_core_web_trf"
+      - "pip install -r requirements.txt"
+
+  - name: "train"
+    help: "Train a named entity recognition model"
+    script:
+      - "python -m spacy train configs/${vars.config} --output training/ --paths.train assets/${vars.train}.spacy --paths.dev assets/${vars.dev}.spacy"
+    deps:
+      - "assets/${vars.train}.spacy"
+      - "assets/${vars.dev}.spacy"
+    outputs:
+      - "training/model-best"
+      - "training/model-last"
+
+  - name: "train_gpu"
+    help: "Train a named entity recognition model"
+    script:
+      - "python -m spacy train configs/${vars.config} --output training/ --paths.train assets/${vars.train}.spacy --paths.dev assets/${vars.dev}.spacy --gpu-id 0"
+    deps:
+      - "assets/${vars.train}.spacy"
+      - "assets/${vars.dev}.spacy"
+    outputs:
+      - "training/model-best"
+      - "training/model-last"
+  
+  - name: "evaluate"
+    help: "Evaluate the ner model and export metric"
+    script:
+      - "python -m spacy evaluate training/ner/model-best assets/${vars.test}.spacy --output training/metrics.json"
+    deps:
+      - "assets/${vars.test}.spacy"
+      - "training/model-best"
+    outputs:
+      - "training/metrics.json"
+
+  - name: "evaluate_gpu"
+    help: "Evaluate the ner model and export metric"
+    script:
+      - "python -m spacy evaluate training/ner/model-best assets/${vars.test}.spacy --output training/metrics.json --gpu-id 0"
+    deps:
+      - "assets/${vars.test}.spacy"
+      - "training/model-best"
+    outputs:
+      - "training/metrics.json"

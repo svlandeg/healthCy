@@ -1,0 +1,17 @@
+train_gpu:
+  cmd: python -m spacy run train_gpu
+  script:
+    - python -m spacy train configs/config.cfg --output training/ --paths.train assets/train.spacy
+      --paths.dev assets/dev.spacy --gpu-id 0
+  deps:
+    - path: assets/train.spacy
+      md5: aef69b8fed7860ed16aaa8798d46fdf5
+    - path: assets/dev.spacy
+      md5: 3ae8774562e7f196195513df7e159e1b
+  outs:
+    - path: training/model-best
+      md5: ed395cb1ee05b5356406939b9a95207a
+    - path: training/model-last
+      md5: 458bde356570171d6d51ce4136a3e5e3
+  spacy_version: 3.0.6
+  spacy_git_version: df3444421

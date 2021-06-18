@@ -1,8 +1,8 @@
-from typing import List, Tuple, Callable
+from typing import List
 
 import spacy
-from spacy.tokens import Doc, Span
-from thinc.types import Floats2d, Ints1d, Ragged, cast
+from spacy.tokens import Doc
+from thinc.types import Floats2d,
 from thinc.api import Model, Linear, chain, Logistic
 
 

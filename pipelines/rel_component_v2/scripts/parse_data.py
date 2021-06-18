@@ -47,7 +47,7 @@ def main(
 
                 tokens = get_tokens(example["text"], nlp, ner_nlp)
                 pairs = calculate_tensor(
-                    tokens,
+                    create_pairs(tokens),
                     mask_entities,
                     relations,
                     use_gpu,
