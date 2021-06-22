@@ -11,12 +11,6 @@ from helper_function.functions import get_tokens, calculate_tensor, create_pairs
 
 msg = Printer()
 
-mask_entities = ["CONDITION", "BENEFIT"]
-relations = ["RELATED"]
-
-path_to_dep = "../assets/dependencies.csv"
-path_to_pos = "../assets/partofspeech.csv"
-
 
 def main(
     json_loc: Path,
@@ -32,8 +26,18 @@ def main(
     if use_gpu:
         spacy.prefer_gpu()
 
-    nlp = spacy.load("en_core_web_lg", exclude=["ner", "lemmatizer"])
-    ner_nlp = spacy.load("../../ner_component/training/model-best")
+    nlp = spacy.load("../../ner_component/training/model-best")
+    mask_entities = ["CONDITION", "BENEFIT"]
+    relations = ["RELATED"]
+
+    dep_list = None
+    pos_list = None
+
+    with open("../assets/dependencies.json", "r") as f:
+        dep_list = json.load(f)
+
+    with open("../assets/partofspeech.json", "r") as f:
+        pos_list = json.load(f)
 
     docs = []
     with json_loc.open("r", encoding="utf8") as jsonfile:
@@ -41,18 +45,19 @@ def main(
             example = json.loads(line)
             if example["answer"] == "accept":
 
-                words = [t["text"] for t in example["tokens"]]
-                spaces = [t["ws"] for t in example["tokens"]]
-                doc = Doc(vocab, words=words, spaces=spaces)
+                # words = [t["text"] for t in example["tokens"]]
+                # spaces = [t["ws"] for t in example["tokens"]]
+                # doc = Doc(vocab, words=words, spaces=spaces)
+                doc = nlp(example["text"])
 
-                tokens = get_tokens(example["text"], nlp, ner_nlp)
+                tokens = get_tokens(doc)
                 pairs = calculate_tensor(
                     create_pairs(tokens),
                     mask_entities,
                     relations,
                     use_gpu,
-                    path_to_dep,
-                    path_to_pos,
+                    dep_list,
+                    pos_list,
                 )
 
                 for relation in example["relations"]:
@@ -70,9 +75,9 @@ def main(
                     )
 
                     if key1 in pairs:
-                        pairs[key1]["relation"][relation["label"]] = 1
+                        pairs[key1]["relation"][relation["label"]] = 1.0
                     elif key2 in pairs:
-                        pairs[key2]["relation"][relation["label"]] = 1
+                        pairs[key2]["relation"][relation["label"]] = 1.0
 
                 doc._.rel = pairs
                 docs.append(doc)

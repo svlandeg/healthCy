@@ -1,12 +1,11 @@
 from contextvars import Token
 from typing import Dict, List
 import cupy
-import pandas as pd
 import numpy as np
-from pandas.core.frame import DataFrame
 import spacy
+import json
 
-from spacy.tokens import Doc, Span
+from spacy.tokens import Doc
 
 # Main functions
 def get_tokens(doc: Doc) -> List[Dict]:
@@ -99,8 +98,8 @@ def calculate_tensor(
     mask_entites: List[str],
     relations: List[str],
     use_gpu: bool,
-    dep_path: str,
-    pos_path: str,
+    dep_list: list,
+    pos_list: list,
 ) -> Dict:
     """Calculate tensor from token pairs"""
     if use_gpu:
@@ -108,11 +107,9 @@ def calculate_tensor(
 
     pair_dict = {}
     for pair in pairs:
-        dep_labels = pd.read_csv(dep_path)
-        pos_labels = pd.read_csv(pos_path)
 
-        dep_dict = create_dep_dict(dep_labels)
-        pos_dict = create_pos_dict(pos_labels)
+        dep_dict = create_dict(dep_list)
+        pos_dict = create_dict(pos_list)
 
         for pos in pair["pos"]:
             if pos.upper() in pos_dict:
@@ -149,7 +146,7 @@ def calculate_tensor(
 
         input_tensor = np.concatenate(
             (token_vector, dep_vector, pos_vector, dist_vector)
-        )
+        ).astype(np.float64)
 
         pair["relation"] = {}
         for relation in relations:
@@ -163,13 +160,13 @@ def calculate_tensor(
         )
 
         pair_entry = {
-            "tuple": [pair["tuple"][0]["text"], pair["tuple"][0]["text"]],
+            "tuple": [pair["tuple"][0]["text"], pair["tuple"][1]["text"]],
             "tensor": input_tensor,
             "relation": {},
         }
 
         for relation in relations:
-            pair_entry["relation"][relation] = 0
+            pair_entry["relation"][relation] = 0.0
 
         pair_dict[pair_key] = pair_entry
 
@@ -177,19 +174,11 @@ def calculate_tensor(
 
 
 # Support functions
-def create_dep_dict(df: DataFrame) -> Dict:
+def create_dict(li: list) -> Dict:
     """transform dictionary to vector"""
     returnDict = {}
-    for index, row in df.iterrows():
-        returnDict[row["Label"]] = 0
-    return returnDict
-
-
-def create_pos_dict(df: DataFrame) -> Dict:
-    """transform dictionary to vector"""
-    returnDict = {}
-    for index, row in df.iterrows():
-        returnDict[row["Label"]] = 0
+    for label in li:
+        returnDict[label] = 0
     return returnDict
 
 
@@ -253,36 +242,47 @@ if __name__ == "__main__":
 
     mask_entities = ["CONDITION", "BENEFIT"]
     relations = ["RELATED"]
-    use_gpu = True
 
+    dep_list = None
+    pos_list = None
+
+    with open("../../assets/dependencies.json", "r") as f:
+        dep_list = json.load(f)
+
+    with open("../../assets/partofspeech.json", "r") as f:
+        pos_list = json.load(f)
+
+    use_gpu = True
     if use_gpu:
         spacy.prefer_gpu()
 
-    nlp = spacy.load("en_core_web_lg", exclude=["ner", "lemmatizer"])
-    ner_nlp = spacy.load("../../../ner_component/training/model-best")
-
-    path_to_dep = "../../assets/dependencies.csv"
-    path_to_pos = "../../assets/partofspeech.csv"
-
+    nlp = spacy.load("../../../ner_component/training/model-best")
     example = "This product helped my joint pain. This has relieved my pain!"
-
     doc = nlp(example)
-    ents = ner_nlp(example)
-    doc.ents = ents.ents
 
     tokens = get_tokens(doc)
-    pairs = calculate_tensor(
-        create_pairs(tokens),
+    pairs = create_pairs(tokens)
+    tensors = calculate_tensor(
+        pairs,
         mask_entities,
         relations,
         use_gpu,
-        path_to_dep,
-        path_to_pos,
+        dep_list,
+        pos_list,
     )
 
-    for pair_key in pairs:
-        print(f" {pair_key}  | {len(pairs[pair_key]['relation'])}")
+    print(f"Tokens: {len(tokens)}")
+    for token in tokens:
+        print(f"{token['text']} | Pos: {token['pos']}")
 
-    # example = "This product helped my joint pain"
-    # doc = nlp(example)
-    # print(calculate_dep_dist(doc[3], doc[4]))
+    print()
+
+    print(f"Pairs: {len(pairs)}")
+    for pair in pairs:
+        print(f"{pair['text']}")
+
+    print()
+
+    print(f"Tensors: {len(tensors)}")
+    for key in tensors:
+        print(f"{tensors[key]['tuple']}")

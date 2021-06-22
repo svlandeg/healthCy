@@ -1,8 +1,6 @@
 from itertools import islice
 from typing import Tuple, List, Iterable, Optional, Dict, Callable, Any
 
-import spacy
-
 from spacy.scorer import PRFScore
 from thinc.types import Floats2d
 import numpy
@@ -16,12 +14,16 @@ from thinc.model import set_dropout_rate
 from wasabi import Printer
 
 
+from helper_function.functions import get_tokens, calculate_tensor, create_pairs
+
+
 Doc.set_extension("rel", default={}, force=True)
 msg = Printer()
 
 
 @Language.factory(
     "relation_extractor",
+    requires=["doc.ents", "token.pos_", "token.dep_"],
     assigns=["doc._.rel"],
     default_score_weights={
         "rel_micro_p": None,
@@ -51,8 +53,8 @@ class RelationExtractor(TrainablePipe):
         self.name = name
         self.cfg = {"labels": [], "threshold": threshold}
 
-        self.nlp = spacy.load("en_core_web_lg", exclude=["ner", "lemmatizer"])
-        self.ner_nlp = spacy.load("../../ner_component/training/model-best")
+        self.dep = "../assets/dependencies.csv"
+        self.pos = "../assets/partofspeech.csv"
 
     @property
     def labels(self) -> Tuple[str]:
@@ -78,25 +80,40 @@ class RelationExtractor(TrainablePipe):
     def __call__(self, doc: Doc) -> Doc:
         """Apply the pipe to a Doc."""
         # check that there are actually any candidate instances in this batch of examples
-        total_instances = len(self.model.attrs["get_instances"](doc))
-        if total_instances == 0:
-            msg.info("Could not determine any instances in doc - returning doc as is.")
-            return doc
-
         predictions = self.predict([doc])
         self.set_annotations([doc], predictions)
         return doc
 
+    # TO DO
     def predict(self, docs: Iterable[Doc]) -> Floats2d:
         """Apply the pipeline's model to a batch of docs, without modifying them."""
-        get_instances = self.model.attrs["get_instances"]
-        total_instances = sum([len(get_instances(doc)) for doc in docs])
-        if total_instances == 0:
-            msg.info(
-                "Could not determine any instances in any docs - can not make any predictions."
-            )
-        scores = self.model.predict(docs)
+
+        entity_list = []
+        pairs_list = []
+
+        # TO DO
+        if not any(len(doc) for doc in docs):
+            for doc in docs:
+                for ent in doc.ents:
+                    if ent.label_ not in entity_list:
+                        entity_list.append(ent.label_)
+
+                tokens = get_tokens(doc)
+                pairs = calculate_tensor(
+                    create_pairs(tokens),
+                    entity_list,
+                    self.cfg["labels"],
+                    0,
+                    self.dep,
+                    self.pos,
+                )
+                pairs_list.append(pairs)
+
+        # TO DO
+        # tensors = [pair]"input"]
         return self.model.ops.asarray(scores)
+
+    # TO DO
 
     def set_annotations(self, docs: Iterable[Doc], scores: Floats2d) -> None:
         """Modify a batch of `Doc` objects, using pre-computed scores."""

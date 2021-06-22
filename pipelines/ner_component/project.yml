@@ -53,6 +53,7 @@ commands:
     script:
       - "python -m spacy train configs/${vars.config} --output training/ --paths.train assets/${vars.train}.spacy --paths.dev assets/${vars.dev}.spacy"
     deps:
+      - "configs/&{vars.config}"
       - "assets/${vars.train}.spacy"
       - "assets/${vars.dev}.spacy"
     outputs:
@@ -64,6 +65,7 @@ commands:
     script:
       - "python -m spacy train configs/${vars.config} --output training/ --paths.train assets/${vars.train}.spacy --paths.dev assets/${vars.dev}.spacy --gpu-id 0"
     deps:
+      - "configs/${vars.config}"
       - "assets/${vars.train}.spacy"
       - "assets/${vars.dev}.spacy"
     outputs:
