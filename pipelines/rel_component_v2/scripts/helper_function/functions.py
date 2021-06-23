@@ -97,13 +97,10 @@ def calculate_tensor(
     pairs: List[Dict],
     mask_entites: List[str],
     relations: List[str],
-    use_gpu: bool,
     dep_list: list,
     pos_list: list,
 ) -> Dict:
     """Calculate tensor from token pairs"""
-    if use_gpu:
-        import cupy
 
     pair_dict = {}
     for pair in pairs:
@@ -133,9 +130,9 @@ def calculate_tensor(
         for token in pair["tuple"]:
             if token["label"] not in mask_entites:
                 for tensor in token["tensor"]:
-                    if use_gpu:
+                    if isinstance(tensor, cupy._core.core.ndarray):
                         sum_vector += cupy.asnumpy(tensor)
-                    else:
+                    elif isinstance(tensor, np.ndarray):
                         sum_vector += np.asarray(list(tensor))
                     sum_tokens += 1
 
@@ -266,7 +263,6 @@ if __name__ == "__main__":
         pairs,
         mask_entities,
         relations,
-        use_gpu,
         dep_list,
         pos_list,
     )

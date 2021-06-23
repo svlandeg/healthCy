@@ -55,7 +55,6 @@ def main(
                     create_pairs(tokens),
                     mask_entities,
                     relations,
-                    use_gpu,
                     dep_list,
                     pos_list,
                 )
