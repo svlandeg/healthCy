@@ -140,11 +140,12 @@ class RelationExtractor(TrainablePipe):
                 pairs = doc._.rel
 
             for pair, prediction in zip(pairs, score):
-                for index in range(0, len(pairs[pair]["relation"])):
-                    if prediction[index] >= self.threshold:
-                        pairs[pair]["relation"][
-                            list(pairs[pair]["relation"].keys())[index]
-                        ] = 1.0
+                for pred, relation_key in zip(prediction, pairs[pair]["relation"]):
+                    if pred >= self.threshold:
+                        pairs[pair]["relation"][relation_key] = 1.0
+                    else:
+                        pairs[pair]["relation"][relation_key] = 0.0
+
             doc._.rel = pairs
 
     def update(
@@ -257,8 +258,6 @@ def score_relations(examples: Iterable[Example], threshold: float) -> Dict[str, 
                 y = gold[pairs_gold]["relation"][relation_gold]
                 x = pred[pairs_pred]["relation"][relation_pred]
 
-                print(x, y)
-
                 if x >= threshold:
                     x = 1
                 else:
@@ -306,27 +305,20 @@ if __name__ == "__main__":
 
     lang = English()
 
-    nlp = spacy.load("../../ner_component/training/model-best")
-    text = "This helped my joint pain"
-    test_doc = nlp(text)
-
-    model = create_relation_model(create_classification_layer(None, None))
-
-    rel_pipe = make_relation_extractor(lang, "rel_extractor", model, threshold=0.4)
-
     train_file = "../data/train.spacy"
     docbin_reader = create_docbin_reader(train_file)
-
     dev_file = "../data/dev.spacy"
     docbin_reader_dev = create_docbin_reader(dev_file)
 
+    model = create_relation_model(create_classification_layer(None, None))
+    rel_pipe = make_relation_extractor(lang, "rel_extractor", model, threshold=0.4)
     rel_pipe.initialize(docbin_reader, nlp=lang)
 
     optimizer = Adam(0.001)
-    epochs = 2
+    epochs = 50
 
     # for example in docbin_reader_dev(lang):
-    #     doc = example.predicted
+    #     doc = example.reference
     #     print(doc.has_extension("rel"))
 
     for i in range(epochs):
@@ -337,8 +329,15 @@ if __name__ == "__main__":
             doc = example.predicted
             prediction = rel_pipe(doc)
             example_list.append(Example(prediction, example.reference))
+
         score = rel_pipe.score(example_list)
-        print(f"{i}: Loss {loss['rel_extractor']} | {score}")
+        print(
+            f"{i+1}: Loss {loss['rel_extractor']} | F-Score: {float(score['rel_micro_f']):.2f}, Precision: {float(score['rel_micro_p']):.2f}, Recall: {float(score['rel_micro_r']):.2f}"
+        )
+
+    nlp = spacy.load("../../ner_component/training/model-best")
+    text = "This helped my joint pain"
+    test_doc = nlp(text)
 
     # rel_doc = rel_pipe(test_doc)
     # for pair in rel_doc._.rel:
