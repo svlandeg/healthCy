@@ -1,0 +1,59 @@
+data_gpu:
+  cmd: python -m spacy run data_gpu
+  script:
+    - python ./scripts/rel_parse_data.py assets/annotations.jsonl data/train.spacy
+      data/dev.spacy 0.2 1 ../ner_component/training/model-best assets/dependencies.json
+      assets/partofspeech.json
+  deps:
+    - path: assets/annotations.jsonl
+      md5: d7924544f4e44253041db0991910775b
+  outs:
+    - path: data/train.spacy
+      md5: bdbb29adf2af42e28f81b6d1ce80f249
+    - path: data/dev.spacy
+      md5: 6cbf77b04c82aace2ec1810c6189a529
+  spacy_version: 3.0.6
+  spacy_git_version: df3444421
+data_cpu:
+  cmd: python -m spacy run data_cpu
+  script:
+    - python ./scripts/rel_parse_data.py assets/annotations.jsonl data/train.spacy
+      data/dev.spacy 0.2 0 ../ner_component/training/model-best assets/dependencies.json
+      assets/partofspeech.json
+  deps:
+    - path: assets/annotations.jsonl
+      md5: d7924544f4e44253041db0991910775b
+  outs:
+    - path: data/train.spacy
+      md5: 390fbd2a198541e0efe335b18b8db360
+    - path: data/dev.spacy
+      md5: c3214599ff527cd28946c38e7b1e29d2
+  spacy_version: 3.0.6
+  spacy_git_version: df3444421
+evaluate_cpu:
+  cmd: python -m spacy run evaluate_cpu
+  script:
+    - python scripts/rel_eval.py training/model-best
+  deps:
+    - path: training/model-best
+      md5: 2101850c92c4d80eaf136e942b6e9932
+  outs: []
+  spacy_version: 3.0.6
+  spacy_git_version: df3444421
+train_gpu:
+  cmd: python -m spacy run train_gpu
+  script:
+    - python -m spacy train configs/rel_config.cfg --output training --paths.train
+      data/train.spacy --paths.dev data/dev.spacy --paths.ner_model ../ner_component/training/model-best
+      --paths.dep assets/dependencies.json --paths.pos assets/partofspeech.json  -c
+      scripts/rel_reader.py --gpu-id 0
+  deps:
+    - path: data/train.spacy
+      md5: ac775ec9f92fed067ab5b76596baa5e8
+    - path: data/dev.spacy
+      md5: 96e37409e857cdab4d243b63ef80c42b
+  outs:
+    - path: training/model-best
+      md5: 30029c208d193ae546e35d380c3888eb
+  spacy_version: 3.0.6
+  spacy_git_version: df3444421

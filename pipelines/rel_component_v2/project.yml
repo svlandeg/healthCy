@@ -1,0 +1,84 @@
+title: "Example project of creating a novel nlp component to do relation extraction from scratch."
+description: "This example project shows how to implement a spaCy component with a custom Machine Learning model, how to train it with and without a transformer, and how to apply it on an evaluation dataset."
+
+# Variables can be referenced across the project.yml using ${vars.var_name}
+vars:
+  annotations: "assets/annotations.jsonl"
+  config: "configs/rel_config.cfg"
+  train: "data/train.spacy"
+  dev: "data/dev.spacy"
+  ner_model: "../ner_component/training/model-best"
+  trained_model: "training/model-best"
+  dep: "assets/dependencies.json"
+  pos: "assets/partofspeech.json"
+
+# These are the directories that the project needs. The project CLI will make
+# sure that they always exist.
+directories: ["scripts", "configs", "assets", "data", "training"]
+
+# Assets that should be downloaded or available in the directory. You can replace
+# this with your own input data.
+assets:
+    - dest: ${vars.annotations}
+      description: "Gold-standard REL annotations created with Prodigy"
+    - dest: ${vars.dep}
+      description: "List of dependency tags"
+    - dest: ${vars.pos}
+      description: "List of part-of-speech tags"
+
+workflows:
+  all:
+    - data_cpu
+
+
+# Project commands, specified in a style similar to CI config files (e.g. Azure
+# pipelines). The name is the command name that lets you trigger the command
+# via "spacy project run [command] [path]". The help message is optional and
+# shown when executing "spacy project run [optional command] [path] --help".
+commands:
+  - name: "data_cpu"
+    help: "Parse the gold-standard annotations from the Prodigy annotations."
+    script:
+      - "python ./scripts/rel_parse_data.py ${vars.annotations} ${vars.train} ${vars.dev} 0.2 0 ${vars.ner_model} ${vars.dep} ${vars.pos}"
+    deps:
+      - ${vars.annotations}
+    outputs:
+      - ${vars.train}
+      - ${vars.dev}
+
+  - name: "data_gpu"
+    help: "Parse the gold-standard annotations from the Prodigy annotations."
+    script:
+      - "python ./scripts/rel_parse_data.py ${vars.annotations} ${vars.train} ${vars.dev} 0.2 1 ${vars.ner_model} ${vars.dep} ${vars.pos}"
+    deps:
+      - ${vars.annotations}
+    outputs:
+      - ${vars.train}
+      - ${vars.dev}
+
+  - name: "train_cpu"
+    help: "Train the REL model on the CPU and evaluate on the dev corpus."
+    script:
+      - "python -m spacy train ${vars.config} --output training --paths.train ${vars.train} --paths.dev ${vars.dev} --paths.ner_model ${vars.ner_model} --paths.dep ${vars.dep} --paths.pos ${vars.pos}  -c ./scripts/rel_reader.py"
+    deps:
+      - ${vars.train}
+      - ${vars.dev}
+    outputs:
+      - ${vars.trained_model}
+
+  - name: "train_gpu"
+    help: "Train the REL model on the CPU and evaluate on the dev corpus."
+    script:
+      - "python -m spacy train ${vars.config} --output training --paths.train ${vars.train} --paths.dev ${vars.dev} --paths.ner_model ${vars.ner_model} --paths.dep ${vars.dep} --paths.pos ${vars.pos}  -c scripts/rel_reader.py --gpu-id 0"
+    deps:
+      - ${vars.train}
+      - ${vars.dev}
+    outputs:
+      - ${vars.trained_model}
+
+
+
+
+
+
+

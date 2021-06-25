@@ -15,9 +15,9 @@ def create_relation_model(
     return model
 
 
-@spacy.registry.architectures("rel_classification_layer.v1")
+@spacy.registry.architectures("rel_classification_layer.v2")
 def create_classification_layer(
-    nO: int = None, nI: int = None, dropout: float = 0.2
+    nO: int = None, nI: int = None
 ) -> Model[Floats2d, Floats2d]:
     with Model.define_operators({">>": chain}):
         return (
@@ -36,8 +36,6 @@ if __name__ == "__main__":
     import thinc.util
     from thinc.api import Adam, fix_random_seed
     from tqdm.notebook import tqdm
-
-    print("Thinc GPU?", prefer_gpu())
 
     Doc.set_extension("rel", default={})
     vocab = Vocab()

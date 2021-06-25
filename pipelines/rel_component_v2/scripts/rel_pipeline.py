@@ -1,9 +1,9 @@
 from itertools import islice
 from typing import Tuple, List, Iterable, Optional, Dict, Callable, Any
 
-from spacy.scorer import PRFScore
 from thinc.types import Floats2d, Floats3d
-import numpy
+import thinc.util
+import numpy as np
 from spacy.training.example import Example
 from thinc.api import Model, Optimizer
 from spacy.tokens.doc import Doc
@@ -12,11 +12,9 @@ from spacy.vocab import Vocab
 from spacy import Language
 from thinc.model import set_dropout_rate
 from wasabi import Printer
+from pathlib import Path
 
 import json
-
-
-from helper_function.functions import get_tokens, calculate_tensor, create_pairs
 
 Doc.set_extension("rel", default={}, force=True)
 msg = Printer()
@@ -33,10 +31,25 @@ msg = Printer()
     },
 )
 def make_relation_extractor(
-    nlp: Language, name: str, model: Model, *, threshold: float
+    nlp: Language,
+    name: str,
+    model: Model,
+    *,
+    threshold: float,
+    batch_size: int,
+    dep: Path,
+    pos: Path,
 ):
     """Construct a RelationExtractor component."""
-    return RelationExtractor(nlp.vocab, model, name, threshold=threshold)
+    return RelationExtractor(
+        nlp.vocab,
+        model,
+        name,
+        threshold=threshold,
+        batch_size=batch_size,
+        pos=pos,
+        dep=dep,
+    )
 
 
 class RelationExtractor(TrainablePipe):
@@ -47,6 +60,9 @@ class RelationExtractor(TrainablePipe):
         name: str = "rel",
         *,
         threshold: float,
+        batch_size: int,
+        dep: Path,
+        pos: Path,
     ) -> None:
         """Initialize a relation extractor."""
         self.vocab = vocab
@@ -54,13 +70,15 @@ class RelationExtractor(TrainablePipe):
         self.name = name
         self.cfg = {"labels": [], "threshold": threshold}
 
+        self.batch_size = batch_size
+
         self.dep_list = None
         self.pos_list = None
 
-        with open("../assets/dependencies.json", "r") as f:
+        with open(dep, "r") as f:
             self.dep_list = json.load(f)
 
-        with open("../assets/partofspeech.json", "r") as f:
+        with open(pos, "r") as f:
             self.pos_list = json.load(f)
 
     @property
@@ -96,14 +114,22 @@ class RelationExtractor(TrainablePipe):
 
         for doc in docs:
             score = []
+            entity_list = []
+            for ent in doc.ents:
+                if ent.label_ not in entity_list:
+                    entity_list.append(ent.label_)
 
             pairs = None
             if not doc.has_extension("rel"):
-                entity_list = []
-                for ent in doc.ents:
-                    if ent.label_ not in entity_list:
-                        entity_list.append(ent.label_)
-
+                tokens = get_tokens(doc)
+                pairs = calculate_tensor(
+                    create_pairs(tokens),
+                    entity_list,
+                    self.cfg["labels"],
+                    self.dep_list,
+                    self.pos_list,
+                )
+            elif doc.has_extension("rel") and len(doc._.rel) == 0:
                 tokens = get_tokens(doc)
                 pairs = calculate_tensor(
                     create_pairs(tokens),
@@ -116,18 +142,30 @@ class RelationExtractor(TrainablePipe):
                 pairs = doc._.rel
 
             for pair in pairs:
-                input_tensor = model.ops.asarray(pairs[pair]["tensor"])
-                score.append(self.model.predict(input_tensor))
-            scores.append(score)
+                input_tensor = np.array(pairs[pair]["tensor"]).astype(np.float32)
+                input_tensor = self.model.ops.asarray([input_tensor])
+                # input_tensor = self.model.ops.asarray(pairs[pair]["tensor"])
+                output_tensor = self.model.predict(input_tensor)
+                score.append(self.model.ops.asarray(output_tensor))
+            scores.append(self.model.ops.asarray(score))
 
-        return self.model.ops.asarray(scores)
+        return scores
 
-    def set_annotations(self, docs: Iterable[Doc], scores: Floats2d) -> None:
+    def set_annotations(self, docs: Iterable[Doc], scores: Floats3d) -> None:
         """Modify a batch of `Doc` objects, using pre-computed scores."""
         for doc, score in zip(docs, scores):
             pairs = None
 
             if not doc.has_extension("rel"):
+                tokens = get_tokens(doc)
+                pairs = calculate_tensor(
+                    create_pairs(tokens),
+                    [],
+                    self.cfg["labels"],
+                    self.dep_list,
+                    self.pos_list,
+                )
+            elif doc.has_extension("rel") and len(doc._.rel) == 0:
                 tokens = get_tokens(doc)
                 pairs = calculate_tensor(
                     create_pairs(tokens),
@@ -142,9 +180,9 @@ class RelationExtractor(TrainablePipe):
             for pair, prediction in zip(pairs, score):
                 for pred, relation_key in zip(prediction, pairs[pair]["relation"]):
                     if pred >= self.threshold:
-                        pairs[pair]["relation"][relation_key] = 1.0
+                        pairs[pair]["relation"][relation_key] = float(1.0)
                     else:
-                        pairs[pair]["relation"][relation_key] = 0.0
+                        pairs[pair]["relation"][relation_key] = float(0.0)
 
             doc._.rel = pairs
 
@@ -156,7 +194,6 @@ class RelationExtractor(TrainablePipe):
         set_annotations: bool = False,
         sgd: Optional[Optimizer] = None,
         losses: Optional[Dict[str, float]] = None,
-        batch_size: int = 128,
     ) -> Dict[str, float]:
         """Learn from a batch of documents and gold-standard information,
         updating the pipe's model. Delegates to predict and get_loss."""
@@ -178,10 +215,12 @@ class RelationExtractor(TrainablePipe):
 
         train_x = np.array(train_x).astype(np.float32)
         train_y = np.array(train_y).astype(np.float32)
-        train_x = model.ops.asarray(train_x)
-        train_y = model.ops.asarray(train_y)
+        train_x = self.model.ops.asarray(train_x)
+        train_y = self.model.ops.asarray(train_y)
 
-        batches = model.ops.multibatch(batch_size, train_x, train_y, shuffle=True)
+        batches = self.model.ops.multibatch(
+            self.batch_size, train_x, train_y, shuffle=True
+        )
 
         for X, Y in batches:
             predictions, backprop = self.model.begin_update(X)
@@ -191,7 +230,7 @@ class RelationExtractor(TrainablePipe):
             backprop(gradient)
             if sgd is not None:
                 self.model.finish_update(sgd)
-            losses[self.name] += loss
+            losses[self.name] += float(loss)
 
         return losses
 
@@ -209,13 +248,13 @@ class RelationExtractor(TrainablePipe):
             for label in labels:
                 self.add_label(label)
         else:
-            for example in get_examples(nlp):
+            for example in get_examples():
                 pairs = example.reference._.rel
                 for pair in pairs:
                     for label in pairs[pair]["relation"]:
                         self.add_label(label)
 
-        subbatch = list(islice(get_examples(nlp), 10))
+        subbatch = list(islice(get_examples(), 10))
         doc_sample = [eg.reference for eg in subbatch]
 
         train_x = []
@@ -228,10 +267,15 @@ class RelationExtractor(TrainablePipe):
 
         train_x = np.array(train_x).astype(np.float32)
         train_y = np.array(train_y).astype(np.float32)
-        train_x = model.ops.asarray(train_x)
-        train_y = model.ops.asarray(train_y)
+        train_x = self.model.ops.asarray(train_x)
+        train_y = self.model.ops.asarray(train_y)
 
         self.model.initialize(X=train_x, Y=train_y)
+        nI = self.model.get_dim("nI")
+        nO = self.model.get_dim("nO")
+        print(
+            f"Initialized model with input dimension nI={nI} and output dimension nO={nO}"
+        )
 
     def score(self, examples: Iterable[Example], **kwargs) -> Dict[str, Any]:
         """Score a batch of examples."""
@@ -283,10 +327,245 @@ def score_relations(examples: Iterable[Example], threshold: float) -> Dict[str, 
         f_score = (2 * precision * recall) / (precision + recall)
 
     return {
-        "rel_micro_p": precision,
-        "rel_micro_r": recall,
-        "rel_micro_f": f_score,
+        "rel_micro_p": float(precision),
+        "rel_micro_r": float(recall),
+        "rel_micro_f": float(f_score),
     }
+
+
+# Main functions
+def get_tokens(doc: Doc) -> List[Dict]:
+    """Extract token information from doc and merge entities to one"""
+    returnList = []
+
+    for sent in doc.sents:
+        for tok in sent:
+
+            if tok.is_punct:
+                continue
+
+            token_text = tok.text
+            token_list = [tok]
+            token_doc = sent
+            token_tensor = [tok.tensor]
+            label = "None"
+            pos_tags = [tok.pos_]
+            start_token = tok.i
+            end_token = start_token
+
+            # Find & Merge entities to one entry
+            if doc[tok.i].ent_iob_ == "B":
+                label = doc[tok.i].ent_type_
+
+                if start_token + 1 < len(doc):
+                    for tok2 in doc[start_token + 1 :]:
+                        if (
+                            doc[tok2.i].ent_type_ == label
+                            and doc[tok2.i].ent_iob_ == "I"
+                        ):
+                            token_list.append(tok2)
+                            pos_tags.append(tok2.pos_)
+                            token_tensor.append(tok2.tensor)
+                            token_text += f" {tok2.text}"
+                            end_token = tok2.i
+                        if doc[tok2.i].ent_iob_ == "B":
+                            break
+            elif doc[tok.i].ent_iob_ == "I":
+                continue
+
+            returnList.append(
+                {
+                    "text": token_text,
+                    "tokens": token_list,
+                    "label": label,
+                    "start": start_token,
+                    "end": end_token,
+                    "sent": token_doc,
+                    "pos": pos_tags,
+                    "tensor": token_tensor,
+                }
+            )
+    return returnList
+
+
+def create_pairs(token_list: List[Dict]) -> List[Dict]:
+    """Create token pairs and get their dependencies"""
+    pair_list = []
+    index = 0
+    for token in token_list:
+        if index + 1 < len(token_list):
+            for token2 in token_list[index + 1 :]:
+                if token["sent"] == token2["sent"]:
+
+                    # Get dependencies
+                    dep_list = []
+                    for tok in token["tokens"]:
+                        for tok2 in token2["tokens"]:
+                            tmp_list = calculate_dep_dist(tok, tok2)
+                            for dep in tmp_list:
+                                if dep not in dep_list:
+                                    dep_list.append(dep)
+
+                    entry = {
+                        "tuple": (token, token2),
+                        "text": (token["text"], token2["text"]),
+                        "dist": token2["start"] - token["start"],
+                        "pos": token["pos"] + token2["pos"],
+                        "dep": dep_list,
+                        "dep_dist": len(dep_list),
+                    }
+                    pair_list.append(entry)
+        index += 1
+    return pair_list
+
+
+def calculate_tensor(
+    pairs: List[Dict],
+    mask_entites: List[str],
+    relations: List[str],
+    dep_list: list,
+    pos_list: list,
+) -> Dict:
+    """Calculate tensor from token pairs"""
+
+    pair_dict = {}
+    for pair in pairs:
+
+        dep_dict = create_dict(dep_list)
+        pos_dict = create_dict(pos_list)
+
+        for pos in pair["pos"]:
+            if pos.upper() in pos_dict:
+                pos_dict[pos.upper()] = 1
+            else:
+                print(f"{pos} not in pos_dict!")
+        for dep in pair["dep"]:
+            if dep.upper() in dep_dict:
+                dep_dict[dep.upper()] = 1
+            else:
+                print(f"{dep} not in dep_dict!")
+
+        dep_vector = dict_to_vector(dep_dict)
+        pos_vector = dict_to_vector(pos_dict)
+        dist_vector = np.array([pair["dist"], pair["dep_dist"]])
+        token_vector = None
+
+        sum_vector = np.zeros(len(pair["tuple"][0]["tensor"][0]))
+        sum_tokens = 0
+
+        for token in pair["tuple"]:
+            if token["label"] not in mask_entites:
+                for tensor in token["tensor"]:
+
+                    if thinc.util.has_cupy:
+                        import cupy
+
+                        if isinstance(tensor, cupy._core.core.ndarray):
+                            sum_vector += cupy.asnumpy(tensor)
+                        elif isinstance(tensor, np.ndarray):
+                            sum_vector += np.asarray(list(tensor))
+                    else:
+                        sum_vector += np.asarray(list(tensor))
+
+                    sum_tokens += 1
+
+        if sum_tokens != 0:
+            token_vector = sum_vector / sum_tokens
+        else:
+            continue
+
+        input_tensor = np.concatenate(
+            (token_vector, dep_vector, pos_vector, dist_vector)
+        ).astype(np.float64)
+
+        pair["relation"] = {}
+        for relation in relations:
+            pair["relation"][relation] = 0
+
+        pair_key = (
+            pair["tuple"][0]["start"],
+            pair["tuple"][0]["end"],
+            pair["tuple"][1]["start"],
+            pair["tuple"][1]["end"],
+        )
+
+        pair_entry = {
+            "tuple": [pair["tuple"][0]["text"], pair["tuple"][1]["text"]],
+            "tensor": input_tensor,
+            "relation": {},
+        }
+
+        for relation in relations:
+            pair_entry["relation"][relation] = 0.0
+
+        pair_dict[pair_key] = pair_entry
+
+    return pair_dict
+
+
+# Support functions
+def create_dict(li: list) -> Dict:
+    """transform dictionary to vector"""
+    returnDict = {}
+    for label in li:
+        returnDict[label] = 0
+    return returnDict
+
+
+def dict_to_vector(d: Dict):
+    """transform dictionary to vector"""
+    return_vector = np.zeros(len(d))
+    index = 0
+    for key in d:
+        return_vector[index] = d[key]
+        index += 1
+    return return_vector
+
+
+# Calculate dependency relation
+def calculate_dep_dist(token1, token2) -> List[str]:
+    """Get dependencies between token1 and token2"""
+    ancestors = list(token1.ancestors)
+    ancestors2 = list(token2.ancestors)
+
+    dep_list = []
+
+    if token2 in ancestors:
+        dep_list.append(token1.dep_)
+        for ancestor in ancestors:
+            dep_list.append(ancestor.dep_)
+            if ancestor == token2:
+                break
+
+    elif token1 in ancestors2:
+        dep_list.append(token2.dep_)
+        for ancestor in ancestors2:
+            dep_list.append(ancestor.dep_)
+            if ancestor == token1:
+                break
+
+    else:
+        common_ancestor = None
+        for ancestor in ancestors2:
+            if ancestor in ancestors:
+                common_ancestor = ancestor
+                break
+
+        dep_list.append(token1.dep_)
+        dep_list.append(token2.dep_)
+
+        for ancestor in ancestors:
+            dep_list.append(ancestor.dep_)
+            if ancestor == common_ancestor:
+                break
+
+        for ancestor in ancestors2:
+            if ancestor == common_ancestor:
+                break
+            elif ancestor.text not in dep_list:
+                dep_list.append(ancestor.dep_)
+
+    return dep_list
 
 
 if __name__ == "__main__":
@@ -317,9 +596,9 @@ if __name__ == "__main__":
     optimizer = Adam(0.001)
     epochs = 50
 
-    # for example in docbin_reader_dev(lang):
-    #     doc = example.reference
-    #     print(doc.has_extension("rel"))
+    for example in docbin_reader_dev(lang):
+        doc = example.reference
+        print(doc.has_extension("rel"))
 
     for i in range(epochs):
         loss = rel_pipe.update(docbin_reader(lang), sgd=optimizer)
@@ -338,6 +617,8 @@ if __name__ == "__main__":
     nlp = spacy.load("../../ner_component/training/model-best")
     text = "This helped my joint pain"
     test_doc = nlp(text)
+
+    # print(rel_pipe.labels)
 
     # rel_doc = rel_pipe(test_doc)
     # for pair in rel_doc._.rel:
