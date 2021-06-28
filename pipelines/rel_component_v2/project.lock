@@ -6,12 +6,12 @@ data_gpu:
       assets/partofspeech.json
   deps:
     - path: assets/annotations.jsonl
-      md5: d7924544f4e44253041db0991910775b
+      md5: 8207d73c21b3ef182f106f173dc7e885
   outs:
     - path: data/train.spacy
-      md5: bdbb29adf2af42e28f81b6d1ce80f249
+      md5: f3db407e0b3b6258eea53cc418123f16
     - path: data/dev.spacy
-      md5: 6cbf77b04c82aace2ec1810c6189a529
+      md5: ae9973fd4bffdf36a0d29a72c62c55ea
   spacy_version: 3.0.6
   spacy_git_version: df3444421
 data_cpu:
@@ -49,11 +49,11 @@ train_gpu:
       scripts/rel_reader.py --gpu-id 0
   deps:
     - path: data/train.spacy
-      md5: ac775ec9f92fed067ab5b76596baa5e8
+      md5: 7887f8723ff31438789abbece3cd944d
     - path: data/dev.spacy
-      md5: 96e37409e857cdab4d243b63ef80c42b
+      md5: 17b7bb2ea41020edf1766fb426d1c438
   outs:
     - path: training/model-best
-      md5: 30029c208d193ae546e35d380c3888eb
+      md5: 427378a42f25af399d562b609c6ac3ed
   spacy_version: 3.0.6
   spacy_git_version: df3444421

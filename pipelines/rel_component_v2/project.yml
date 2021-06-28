@@ -1,5 +1,5 @@
-title: "Example project of creating a novel nlp component to do relation extraction from scratch."
-description: "This example project shows how to implement a spaCy component with a custom Machine Learning model, how to train it with and without a transformer, and how to apply it on an evaluation dataset."
+title: "Example project of relation extraction"
+description: "This example project shows how to implement a spaCy component with a custom Machine Learning model."
 
 # Variables can be referenced across the project.yml using ${vars.var_name}
 vars:
@@ -27,8 +27,12 @@ assets:
       description: "List of part-of-speech tags"
 
 workflows:
-  all:
+  all_cpu:
     - data_cpu
+    - train_cpu
+  all_gpu:
+    - data_gpu
+    - train_gpu
 
 
 # Project commands, specified in a style similar to CI config files (e.g. Azure
@@ -67,7 +71,7 @@ commands:
       - ${vars.trained_model}
 
   - name: "train_gpu"
-    help: "Train the REL model on the CPU and evaluate on the dev corpus."
+    help: "Train the REL model on the GPU and evaluate on the dev corpus."
     script:
       - "python -m spacy train ${vars.config} --output training --paths.train ${vars.train} --paths.dev ${vars.dev} --paths.ner_model ${vars.ner_model} --paths.dep ${vars.dep} --paths.pos ${vars.pos}  -c scripts/rel_reader.py --gpu-id 0"
     deps:

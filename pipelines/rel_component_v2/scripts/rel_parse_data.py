@@ -18,18 +18,18 @@ def main(
     dev_file: Path,
     eval_split: float,
     use_gpu: bool,
-    ner_model: Path,
+    model: Path,
     dep: Path,
     pos: Path,
 ):
     """Creating the corpus from the Prodigy annotations."""
     # Doc.set_extension("rel", default={})
-    # vocab = Vocab()
+    vocab = Vocab()
 
     if use_gpu:
         spacy.prefer_gpu()
 
-    nlp = spacy.load(ner_model)
+    nlp = spacy.load(model)
     mask_entities = ["CONDITION", "BENEFIT"]
     relations = ["RELATED"]
 
@@ -53,19 +53,19 @@ def main(
                 # blank_doc = Doc(vocab, words=words, spaces=spaces)
 
                 doc = nlp(example["text"])
+                ents_list = []
 
-                # for span in example["spans"]:
-                #     doc.set_ents(
-                #         [
-                #             Span(
-                #                 doc,
-                #                 span["token_start"],
-                #                 span["token_end"],
-                #                 span["label"],
-                #             )
-                #         ]
-                #     )
+                for span in example["spans"]:
+                    ents_list.append(
+                        Span(
+                            doc,
+                            span["token_start"],
+                            span["token_end"] + 1,
+                            span["label"],
+                        )
+                    )
 
+                doc.set_ents(ents_list)
                 tokens = get_tokens(doc)
                 pairs = calculate_tensor(
                     create_pairs(tokens),

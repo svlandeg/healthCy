@@ -406,11 +406,16 @@ def create_pairs(token_list: List[Dict]) -> List[Dict]:
                                 if dep not in dep_list:
                                     dep_list.append(dep)
 
+                    pos_list = token["pos"]
+                    for pos2 in token2["pos"]:
+                        if pos2 not in pos_list:
+                            pos_list.append(pos2)
+
                     entry = {
                         "tuple": (token, token2),
                         "text": (token["text"], token2["text"]),
-                        "dist": token2["start"] - token["start"],
-                        "pos": token["pos"] + token2["pos"],
+                        "dist": token2["start"] - token["end"],
+                        "pos": pos_list,
                         "dep": dep_list,
                         "dep_dist": len(dep_list),
                     }
@@ -454,6 +459,7 @@ def calculate_tensor(
         sum_tokens = 0
 
         for token in pair["tuple"]:
+            # Masking
             if token["label"] not in mask_entites:
                 for tensor in token["tensor"]:
 

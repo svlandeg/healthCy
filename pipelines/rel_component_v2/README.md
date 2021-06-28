@@ -3,9 +3,9 @@
 
 <!-- SPACY PROJECT: AUTO-GENERATED DOCS START (do not remove) -->
 
-# 🪐 spaCy Project: Example project of creating a novel nlp component to do relation extraction from scratch.
+# 🪐 spaCy Project: Example project of relation extraction
 
-This example project shows how to implement a spaCy component with a custom Machine Learning model, how to train it with and without a transformer, and how to apply it on an evaluation dataset.
+This example project shows how to implement a spaCy component with a custom Machine Learning model.
 
 ## 📋 project.yml
 
@@ -21,11 +21,10 @@ Commands are only re-run if their inputs have changed.
 
 | Command | Description |
 | --- | --- |
-| `data` | Parse the gold-standard annotations from the Prodigy annotations. |
+| `data_cpu` | Parse the gold-standard annotations from the Prodigy annotations. |
+| `data_gpu` | Parse the gold-standard annotations from the Prodigy annotations. |
 | `train_cpu` | Train the REL model on the CPU and evaluate on the dev corpus. |
-| `train_gpu` | Train the REL model with a Transformer on a GPU and evaluate on the dev corpus. |
-| `evaluate` | Apply the best model to new, unseen text, and measure accuracy at different thresholds. |
-| `clean` | Remove intermediate files to start data preparation and training from a clean slate. |
+| `train_gpu` | Train the REL model on the GPU and evaluate on the dev corpus. |
 
 ### ⏭ Workflows
 
@@ -36,8 +35,8 @@ inputs have changed.
 
 | Workflow | Steps |
 | --- | --- |
-| `all` | `data` &rarr; `train_cpu` &rarr; `evaluate` |
-| `all_gpu` | `data` &rarr; `train_gpu` &rarr; `evaluate` |
+| `all_cpu` | `data_cpu` &rarr; `train_cpu` |
+| `all_gpu` | `data_gpu` &rarr; `train_gpu` |
 
 ### 🗂 Assets
 
@@ -48,5 +47,7 @@ in the project directory.
 | File | Source | Description |
 | --- | --- | --- |
 | [`assets/annotations.jsonl`](assets/annotations.jsonl) | Local | Gold-standard REL annotations created with Prodigy |
+| [`assets/dependencies.json`](assets/dependencies.json) | Local | List of dependency tags |
+| [`assets/partofspeech.json`](assets/partofspeech.json) | Local | List of part-of-speech tags |
 
 <!-- SPACY PROJECT: AUTO-GENERATED DOCS END (do not remove) -->
