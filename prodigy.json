@@ -1,0 +1,66 @@
+{
+    "theme": "basic",
+    "custom_theme": {
+        "accept":"#72CE71",
+        "reject":"#E86A6A",
+        "ignore":"#1A1919",
+        "undo":"#1A1919",
+
+        "bgCard":"#3C3C3C",
+        "bgCardSecondary":"#534E4E",
+        "bgCardTertiary":"#534E4E",
+        "bgCardQuaternary":"#534E4E",
+
+        "bgPage":"#292929",
+        "bgSidebar":"#3C3C3C",
+        "bgSidebarDark":"#292929",
+
+        "bgHighlight":"#F559B7",
+        "bgLowlight":"#9A3C75",
+
+        "bgCardTitle":"#3C3C3C",
+        "bgProgress":"#dadada",
+        "bgButton":"#1A1919",
+        "bgMeta":"#292929",
+
+
+        "colorText":"#dadada",
+        "colorSidebar":"#dadada",
+        "colorSidebarHeadline":"#dadada",
+        "colorSidebarLabel":"#dadada",
+        "colorButton":"#dadada",
+        "colorHighlightLabel":"#dadada",
+        "colorCardTitle":"#dadada",
+
+        "cardBorder":"0px",
+        "cardShadow":"0px"
+
+    },
+    "buttons": ["accept", "reject", "ignore", "undo"],
+    "batch_size": 10,
+    "history_size": 10,
+    "port": 8080,
+    "host": "localhost",
+    "cors": true,
+    "db": "sqlite",
+    "db_settings": {},
+    "api_keys": {},
+    "validate": true,
+    "auto_exclude_current": true,
+    "instant_submit": false,
+    "feed_overlap": false,
+    "ui_lang": "en",
+    "project_info": ["dataset", "session", "lang", "recipe_name", "view_id", "label"],
+    "show_stats": false,
+    "hide_meta": false,
+    "show_flag": false,
+    "instructions": false,
+    "swipe": false,
+    "swipe_gestures": { "left": "accept", "right": "reject" },
+    "split_sents_threshold": false,
+    "html_template": false,
+    "global_css": null,
+    "javascript": null,
+    "writing_dir": "ltr",
+    "show_whitespace": false
+  }

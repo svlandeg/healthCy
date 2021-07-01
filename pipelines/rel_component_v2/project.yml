@@ -4,9 +4,11 @@ description: "This example project shows how to implement a spaCy component with
 # Variables can be referenced across the project.yml using ${vars.var_name}
 vars:
   annotations: "assets/annotations.jsonl"
+  annotations_test: "assets/annotations_test.jsonl"
   config: "configs/rel_config.cfg"
   train: "data/train.spacy"
   dev: "data/dev.spacy"
+  test: "data/test.spacy"
   ner_model: "../ner_component/training/model-best"
   trained_model: "training/model-best"
   dep: "assets/dependencies.json"
@@ -21,6 +23,8 @@ directories: ["scripts", "configs", "assets", "data", "training"]
 assets:
     - dest: ${vars.annotations}
       description: "Gold-standard REL annotations created with Prodigy"
+    - dest: ${vars.annotations_test}
+      description: "Gold-standard REL annotations created with Prodigy for testing the model"
     - dest: ${vars.dep}
       description: "List of dependency tags"
     - dest: ${vars.pos}
@@ -44,27 +48,34 @@ commands:
     help: "Parse the gold-standard annotations from the Prodigy annotations."
     script:
       - "python ./scripts/rel_parse_data.py ${vars.annotations} ${vars.train} ${vars.dev} 0.2 0 ${vars.ner_model} ${vars.dep} ${vars.pos}"
+      - "python ./scripts/rel_parse_data.py ${vars.annotations_test} ${vars.test} .\ 0 0 ${vars.ner_model} ${vars.dep} ${vars.pos}"
     deps:
       - ${vars.annotations}
+      - ${vars.annotations_test}
     outputs:
       - ${vars.train}
       - ${vars.dev}
+      - ${vars.test}
 
   - name: "data_gpu"
     help: "Parse the gold-standard annotations from the Prodigy annotations."
     script:
       - "python ./scripts/rel_parse_data.py ${vars.annotations} ${vars.train} ${vars.dev} 0.2 1 ${vars.ner_model} ${vars.dep} ${vars.pos}"
+      - "python ./scripts/rel_parse_data.py ${vars.annotations_test} ${vars.test} .\ 0 1 ${vars.ner_model} ${vars.dep} ${vars.pos}"
     deps:
       - ${vars.annotations}
+      - ${vars.annotations_test}
     outputs:
       - ${vars.train}
       - ${vars.dev}
+      - ${vars.test}
 
   - name: "train_cpu"
     help: "Train the REL model on the CPU and evaluate on the dev corpus."
     script:
       - "python -m spacy train ${vars.config} --output training --paths.train ${vars.train} --paths.dev ${vars.dev} --paths.ner_model ${vars.ner_model} --paths.dep ${vars.dep} --paths.pos ${vars.pos}  -c ./scripts/rel_reader.py"
     deps:
+      - ${vars.config}
       - ${vars.train}
       - ${vars.dev}
     outputs:
@@ -75,10 +86,29 @@ commands:
     script:
       - "python -m spacy train ${vars.config} --output training --paths.train ${vars.train} --paths.dev ${vars.dev} --paths.ner_model ${vars.ner_model} --paths.dep ${vars.dep} --paths.pos ${vars.pos}  -c scripts/rel_reader.py --gpu-id 0"
     deps:
+      - ${vars.config}
       - ${vars.train}
       - ${vars.dev}
     outputs:
       - ${vars.trained_model}
+
+  - name: "eval_cpu"
+    help: "Evaluate the REL model on the CPU"
+    script:
+      - "python ./scripts/rel_eval.py ${vars.test} 0 ${vars.trained_model}"
+    deps:
+      - ${vars.test}
+      - ${vars.trained_model}
+
+  - name: "eval_gpu"
+    help: "Evaluate the REL model on the GPU"
+    script:
+      - "python ./scripts/rel_eval.py ${vars.test} 1 ${vars.trained_model}"
+    deps:
+      - ${vars.test}
+      - ${vars.trained_model}
+
+  
 
 
 

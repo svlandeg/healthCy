@@ -1,5 +1,6 @@
 from itertools import islice
 from typing import Tuple, List, Iterable, Optional, Dict, Callable, Any
+from thinc import model
 
 from thinc.types import Floats2d, Floats3d
 import thinc.util
@@ -281,6 +282,9 @@ class RelationExtractor(TrainablePipe):
         """Score a batch of examples."""
         return score_relations(examples, self.threshold)
 
+    def get_model(self):
+        return self.model
+
 
 def score_relations(examples: Iterable[Example], threshold: float) -> Dict[str, Any]:
     """Score a batch of examples."""
@@ -411,6 +415,10 @@ def create_pairs(token_list: List[Dict]) -> List[Dict]:
                         if pos2 not in pos_list:
                             pos_list.append(pos2)
 
+                    has_label = 0
+                    if token["label"] != "None" or token2["label"] != "None":
+                        has_label = 1
+
                     entry = {
                         "tuple": (token, token2),
                         "text": (token["text"], token2["text"]),
@@ -418,6 +426,7 @@ def create_pairs(token_list: List[Dict]) -> List[Dict]:
                         "pos": pos_list,
                         "dep": dep_list,
                         "dep_dist": len(dep_list),
+                        "has_label": has_label,
                     }
                     pair_list.append(entry)
         index += 1
@@ -452,7 +461,7 @@ def calculate_tensor(
 
         dep_vector = dict_to_vector(dep_dict)
         pos_vector = dict_to_vector(pos_dict)
-        dist_vector = np.array([pair["dist"], pair["dep_dist"]])
+        dist_vector = np.array([pair["dist"], pair["dep_dist"], pair["has_label"]])
         token_vector = None
 
         sum_vector = np.zeros(len(pair["tuple"][0]["tensor"][0]))

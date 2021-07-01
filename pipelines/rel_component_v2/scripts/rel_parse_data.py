@@ -23,9 +23,6 @@ def main(
     pos: Path,
 ):
     """Creating the corpus from the Prodigy annotations."""
-    # Doc.set_extension("rel", default={})
-    vocab = Vocab()
-
     if use_gpu:
         spacy.prefer_gpu()
 
@@ -35,6 +32,8 @@ def main(
 
     dep_list = None
     pos_list = None
+
+    pair_count = 0
 
     with open(dep, "r") as f:
         dep_list = json.load(f)
@@ -74,6 +73,8 @@ def main(
                     dep_list,
                     pos_list,
                 )
+                pair_count += len(pairs)
+                pair_not_found = 0
 
                 for relation in example["relations"]:
                     key1 = (
@@ -93,6 +94,8 @@ def main(
                         pairs[key1]["relation"][relation["label"]] = 1.0
                     elif key2 in pairs:
                         pairs[key2]["relation"][relation["label"]] = 1.0
+                    else:
+                        pair_not_found += 1
 
                 if not doc.has_extension("rel"):
                     doc.set_extension("rel", default={})
@@ -100,21 +103,31 @@ def main(
 
                 docs.append(doc)
 
-    split = int(len(docs) * eval_split)
-    random.shuffle(docs)
+    msg.warn(f"{pair_not_found} pairs not found")
 
-    train = docs[split:]
-    dev = docs[:split]
+    if eval_split != 0:
+        split = int(len(docs) * eval_split)
+        random.shuffle(docs)
 
-    msg.info(f"{eval_split} training/eval split | {len(docs)} total annotations")
+        train = docs[split:]
+        dev = docs[:split]
 
-    docbin = DocBin(docs=train, store_user_data=True)
-    docbin.to_disk(train_file)
-    msg.info(f"{len(train)} training sentences")
+        msg.info(f"{pair_count} total pairs")
+        msg.info(f"{eval_split} training/eval split | {len(docs)} total annotations")
 
-    docbin = DocBin(docs=dev, store_user_data=True)
-    docbin.to_disk(dev_file)
-    msg.info(f"{len(dev)} dev sentences")
+        docbin = DocBin(docs=train, store_user_data=True)
+        docbin.to_disk(train_file)
+        msg.info(f"{len(train)} training sentences")
+
+        docbin = DocBin(docs=dev, store_user_data=True)
+        docbin.to_disk(dev_file)
+        msg.info(f"{len(dev)} dev sentences")
+
+    else:
+        msg.info(f"{pair_count} total pairs | {len(docs)} total annotations")
+
+        docbin = DocBin(docs=docs, store_user_data=True)
+        docbin.to_disk(train_file)
 
 
 if __name__ == "__main__":

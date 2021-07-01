@@ -4,14 +4,20 @@ data_gpu:
     - python ./scripts/rel_parse_data.py assets/annotations.jsonl data/train.spacy
       data/dev.spacy 0.2 1 ../ner_component/training/model-best assets/dependencies.json
       assets/partofspeech.json
+    - python ./scripts/rel_parse_data.py assets/annotations_test.jsonl data/test.spacy
+      . 0 1 ../ner_component/training/model-best assets/dependencies.json assets/partofspeech.json
   deps:
     - path: assets/annotations.jsonl
-      md5: 8207d73c21b3ef182f106f173dc7e885
+      md5: bb6eed0018f89b32c5121da6dadebb31
+    - path: assets/annotations_test.jsonl
+      md5: d7c42f334a877a85a705e0be0f360b75
   outs:
     - path: data/train.spacy
-      md5: f3db407e0b3b6258eea53cc418123f16
+      md5: 917ea34795dd1aac258aeede986e3b4a
     - path: data/dev.spacy
-      md5: ae9973fd4bffdf36a0d29a72c62c55ea
+      md5: 0082166bbb44f25325d217bceba01e18
+    - path: data/test.spacy
+      md5: a639b3ab00f7a3746daccf403ce54592
   spacy_version: 3.0.6
   spacy_git_version: df3444421
 data_cpu:
@@ -48,12 +54,26 @@ train_gpu:
       --paths.dep assets/dependencies.json --paths.pos assets/partofspeech.json  -c
       scripts/rel_reader.py --gpu-id 0
   deps:
+    - path: configs/rel_config.cfg
+      md5: 71ff0965f98eded49e284a1b72e07868
     - path: data/train.spacy
-      md5: 7887f8723ff31438789abbece3cd944d
+      md5: 917ea34795dd1aac258aeede986e3b4a
     - path: data/dev.spacy
-      md5: 17b7bb2ea41020edf1766fb426d1c438
+      md5: 0082166bbb44f25325d217bceba01e18
   outs:
     - path: training/model-best
-      md5: 427378a42f25af399d562b609c6ac3ed
+      md5: 34489f09a209ee452265de42074cbbfc
+  spacy_version: 3.0.6
+  spacy_git_version: df3444421
+eval_gpu:
+  cmd: python -m spacy run eval_gpu
+  script:
+    - python ./scripts/rel_eval.py data/test.spacy 1 training/model-best
+  deps:
+    - path: data/test.spacy
+      md5: a639b3ab00f7a3746daccf403ce54592
+    - path: training/model-best
+      md5: 34489f09a209ee452265de42074cbbfc
+  outs: []
   spacy_version: 3.0.6
   spacy_git_version: df3444421
