@@ -21,9 +21,9 @@ def create_classification_layer(
 ) -> Model[Floats2d, Floats2d]:
     with Model.define_operators({">>": chain}):
         return (
-            Linear(nO=nO, nI=nI)
-            >> Linear(nO=nO, nI=nI)
-            >> Linear(nO=nO, nI=nI)
+            Linear(nO=516, nI=nI)
+            >> Linear(nO=128, nI=516)
+            >> Linear(nO=nO, nI=128)
             >> Logistic()
         )
 
@@ -36,9 +36,12 @@ if __name__ == "__main__":
     import thinc.util
     from thinc.api import Adam, fix_random_seed
     from tqdm.notebook import tqdm
+    from spacy.scorer import PRFScore
+    from wasabi import Printer
 
-    Doc.set_extension("rel", default={})
+    msg = Printer()
     vocab = Vocab()
+    Doc.set_extension("rel", default={})
 
     training_path = "../data/train.spacy"
     training_data = list(DocBin().from_disk(training_path).get_docs(vocab))
@@ -52,6 +55,12 @@ if __name__ == "__main__":
     dev_x = []
     dev_y = []
 
+    relations = list(
+        training_data[0]
+        ._.rel[list(training_data[0]._.rel.keys())[0]]["relation"]
+        .keys()
+    )
+
     for doc in training_data:
         for pairs in doc._.rel:
             train_x.append(doc._.rel[pairs]["tensor"])
@@ -62,15 +71,14 @@ if __name__ == "__main__":
             dev_x.append(doc._.rel[pairs]["tensor"])
             dev_y.append(np.array(list(doc._.rel[pairs]["relation"].values())))
 
-    print(f"Train docs: {len(training_data)} | Dev docs: {len(dev_data)}")
-    print(f"Train size: {len(train_x)} | Dev size : {len(dev_x)}")
+    msg.info(f"Train docs: {len(training_data)} | Dev docs: {len(dev_data)}")
+    msg.info(f"Train size: {len(train_x)} | Dev size : {len(dev_x)}")
+    msg.info(f"Output classes: {relations}")
 
     train_x = np.array(train_x).astype(np.float32)
     train_y = np.array(train_y).astype(np.float32)
     dev_x = np.array(dev_x).astype(np.float32)
     dev_y = np.array(dev_y).astype(np.float32)
-
-    print(train_x.dtype, train_y.dtype, dev_x.dtype, dev_y.dtype)
 
     model = create_relation_model(create_classification_layer(None, None))
 
@@ -82,7 +90,7 @@ if __name__ == "__main__":
     model.initialize(X=train_x[:5], Y=train_y[:5])
     nI = model.get_dim("nI")
     nO = model.get_dim("nO")
-    print(
+    msg.good(
         f"Initialized model with input dimension nI={nI} and output dimension nO={nO}"
     )
 
@@ -90,58 +98,63 @@ if __name__ == "__main__":
     optimizer = Adam(0.001)
     batch_size = 128
     epochs = 100
-    threshold = 0.7
-    print("Measuring performance across iterations:")
+    threshold = 0.4
+    msg.text("Start training")
 
     for i in range(epochs):
         batches = model.ops.multibatch(batch_size, train_x, train_y, shuffle=True)
+        i_loss = 0
         for X, Y in batches:
             Yh, backprop = model.begin_update(X)
-            backprop(Yh - Y)
+
+            gradient = Yh - Y
+            loss = (gradient ** 2).sum(axis=1).mean()
+            backprop(gradient)
             model.finish_update(optimizer)
-        # Evaluate and print progress
-        correct = 0
+            i_loss += float(loss)
 
-        true_positive = 0
-        false_positive = 0
-        true_negative = 0
-        false_negative = 0
+        score_dict = {}
 
-        total = 0
         for X, Y in model.ops.multibatch(batch_size, dev_x, dev_y):
             Yh = model.predict(X)
 
-            for k in range(0, len(Y)):
-                prediction = 0
-                if Yh[k] >= threshold:
-                    prediction = 1
+            for output_yh, output_y in zip(Yh, Y):
+                max_val = np.max(output_yh)
 
-                if prediction == 1 and Y[k] == 1:
-                    true_positive += 1
-                elif prediction == 1 and Y[k] == 0:
-                    false_positive += 1
-                elif prediction == 0 and Y[k] == 0:
-                    true_negative += 1
-                elif prediction == 0 and Y[k] == 1:
-                    false_negative += 1
+                for pred, expected, relation in zip(output_yh, output_y, relations):
+                    if relation not in score_dict:
+                        score_dict[relation] = PRFScore()
 
-            total += len(Y)
+                    prediction = 0
+                    if pred >= threshold and pred == max_val:
+                        prediction = 1
 
-            # correct += (Yh.argmax(axis=1) == Y.argmax(axis=1)).sum()
-            # total += Yh.shape[0]
+                    if prediction == 1 and expected == 1:
+                        score_dict[relation].tp += 1
+                    elif prediction == 1 and expected == 0:
+                        score_dict[relation].fp += 1
+                    elif prediction == 0 and expected == 1:
+                        score_dict[relation].fn += 1
 
-        precision = 0
-        if (true_positive + false_positive) != 0:
-            precision = true_positive / (true_positive + false_positive)
+        global_fscore = 0
+        global_precision = 0
+        global_recall = 0
 
-        recall = 0
-        if (true_positive + false_negative) != 0:
-            recall = true_positive / (true_positive + false_negative)
+        for relation in score_dict:
+            msg.info(
+                f" {i} | Class: {relation} F-Score:{float(score_dict[relation].fscore):.3f}, Precision:{float(score_dict[relation].precision):.3f}, Recall:{float(score_dict[relation].recall):.3f}"
+            )
 
-        f_score = 0
-        if (precision + recall) != 0:
-            f_score = (2 * precision * recall) / (precision + recall)
+            global_fscore += float(score_dict[relation].fscore)
+            global_precision += float(score_dict[relation].precision)
+            global_recall += float(score_dict[relation].recall)
 
-        print(
-            f" {i} F-Score:{float(f_score):.3f}, Precision:{float(precision):.3f}, Recall:{float(recall):.3f}"
+        global_fscore /= len(score_dict)
+        global_precision /= len(score_dict)
+        global_recall /= len(score_dict)
+
+        msg.info(
+            f" {i} | Loss: {i_loss:.3f}, F-Score:{float(global_fscore):.3f}, Precision:{float(global_precision):.3f}, Recall:{float(global_recall):.3f}"
         )
+
+        print("")

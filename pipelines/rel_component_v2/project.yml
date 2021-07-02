@@ -11,8 +11,7 @@ vars:
   test: "data/test.spacy"
   ner_model: "../ner_component/training/model-best"
   trained_model: "training/model-best"
-  dep: "assets/dependencies.json"
-  pos: "assets/partofspeech.json"
+  script_data: "scripts/rel_parse_data.py"
 
 # These are the directories that the project needs. The project CLI will make
 # sure that they always exist.
@@ -25,10 +24,6 @@ assets:
       description: "Gold-standard REL annotations created with Prodigy"
     - dest: ${vars.annotations_test}
       description: "Gold-standard REL annotations created with Prodigy for testing the model"
-    - dest: ${vars.dep}
-      description: "List of dependency tags"
-    - dest: ${vars.pos}
-      description: "List of part-of-speech tags"
 
 workflows:
   all_cpu:
@@ -47,11 +42,12 @@ commands:
   - name: "data_cpu"
     help: "Parse the gold-standard annotations from the Prodigy annotations."
     script:
-      - "python ./scripts/rel_parse_data.py ${vars.annotations} ${vars.train} ${vars.dev} 0.2 0 ${vars.ner_model} ${vars.dep} ${vars.pos}"
-      - "python ./scripts/rel_parse_data.py ${vars.annotations_test} ${vars.test} .\ 0 0 ${vars.ner_model} ${vars.dep} ${vars.pos}"
+      - "python ./scripts/rel_parse_data.py ${vars.annotations} ${vars.train} ${vars.dev} 0.2 0 ${vars.ner_model} "
+      - "python ./scripts/rel_parse_data.py ${vars.annotations_test} ${vars.test} .\ 0 0 ${vars.ner_model}"
     deps:
       - ${vars.annotations}
       - ${vars.annotations_test}
+      - ${vars.script_data}
     outputs:
       - ${vars.train}
       - ${vars.dev}
@@ -60,11 +56,12 @@ commands:
   - name: "data_gpu"
     help: "Parse the gold-standard annotations from the Prodigy annotations."
     script:
-      - "python ./scripts/rel_parse_data.py ${vars.annotations} ${vars.train} ${vars.dev} 0.2 1 ${vars.ner_model} ${vars.dep} ${vars.pos}"
-      - "python ./scripts/rel_parse_data.py ${vars.annotations_test} ${vars.test} .\ 0 1 ${vars.ner_model} ${vars.dep} ${vars.pos}"
+      - "python ./scripts/rel_parse_data.py ${vars.annotations} ${vars.train} ${vars.dev} 0.2 1 ${vars.ner_model}"
+      - "python ./scripts/rel_parse_data.py ${vars.annotations_test} ${vars.test} .\ 0 1 ${vars.ner_model}"
     deps:
       - ${vars.annotations}
       - ${vars.annotations_test}
+      - ${vars.script_data}
     outputs:
       - ${vars.train}
       - ${vars.dev}
@@ -73,7 +70,7 @@ commands:
   - name: "train_cpu"
     help: "Train the REL model on the CPU and evaluate on the dev corpus."
     script:
-      - "python -m spacy train ${vars.config} --output training --paths.train ${vars.train} --paths.dev ${vars.dev} --paths.ner_model ${vars.ner_model} --paths.dep ${vars.dep} --paths.pos ${vars.pos}  -c ./scripts/rel_reader.py"
+      - "python -m spacy train ${vars.config} --output training --paths.train ${vars.train} --paths.dev ${vars.dev} --paths.ner_model ${vars.ner_model} -c ./scripts/rel_reader.py"
     deps:
       - ${vars.config}
       - ${vars.train}
@@ -84,7 +81,7 @@ commands:
   - name: "train_gpu"
     help: "Train the REL model on the GPU and evaluate on the dev corpus."
     script:
-      - "python -m spacy train ${vars.config} --output training --paths.train ${vars.train} --paths.dev ${vars.dev} --paths.ner_model ${vars.ner_model} --paths.dep ${vars.dep} --paths.pos ${vars.pos}  -c scripts/rel_reader.py --gpu-id 0"
+      - "python -m spacy train ${vars.config} --output training --paths.train ${vars.train} --paths.dev ${vars.dev} --paths.ner_model ${vars.ner_model} -c scripts/rel_reader.py --gpu-id 0"
     deps:
       - ${vars.config}
       - ${vars.train}

@@ -19,27 +19,16 @@ def main(
     eval_split: float,
     use_gpu: bool,
     model: Path,
-    dep: Path,
-    pos: Path,
 ):
     """Creating the corpus from the Prodigy annotations."""
     if use_gpu:
         spacy.prefer_gpu()
 
     nlp = spacy.load(model)
-    mask_entities = ["CONDITION", "BENEFIT"]
     relations = ["RELATED"]
 
-    dep_list = None
-    pos_list = None
-
     pair_count = 0
-
-    with open(dep, "r") as f:
-        dep_list = json.load(f)
-
-    with open(pos, "r") as f:
-        pos_list = json.load(f)
+    pair_with_relation = 0
 
     docs = []
     with json_loc.open("r", encoding="utf8") as jsonfile:
@@ -47,13 +36,9 @@ def main(
             example = json.loads(line)
             if example["answer"] == "accept":
 
-                # words = [t["text"] for t in example["tokens"]]
-                # spaces = [t["ws"] for t in example["tokens"]]
-                # blank_doc = Doc(vocab, words=words, spaces=spaces)
-
                 doc = nlp(example["text"])
-                ents_list = []
 
+                ents_list = []
                 for span in example["spans"]:
                     ents_list.append(
                         Span(
@@ -63,18 +48,19 @@ def main(
                             span["label"],
                         )
                     )
-
                 doc.set_ents(ents_list)
+
                 tokens = get_tokens(doc)
                 pairs = calculate_tensor(
                     create_pairs(tokens),
-                    mask_entities,
                     relations,
-                    dep_list,
-                    pos_list,
                 )
                 pair_count += len(pairs)
                 pair_not_found = 0
+
+                # Set unrelated as 1
+                # for pair in pairs:
+                #    pairs[pair]["relation"]["UNRELATED"] = 1.0
 
                 for relation in example["relations"]:
                     key1 = (
@@ -92,8 +78,10 @@ def main(
 
                     if key1 in pairs:
                         pairs[key1]["relation"][relation["label"]] = 1.0
+                        pair_with_relation += 1
                     elif key2 in pairs:
                         pairs[key2]["relation"][relation["label"]] = 1.0
+                        pair_with_relation += 1
                     else:
                         pair_not_found += 1
 
@@ -103,7 +91,12 @@ def main(
 
                 docs.append(doc)
 
-    msg.warn(f"{pair_not_found} pairs not found")
+    if pair_not_found != 0:
+        msg.warn(f"{pair_not_found} pairs not found")
+
+    msg.info(
+        f"{pair_with_relation} of {pair_count} pairs have a relation ({float(pair_with_relation/pair_count):0.2f}%)"
+    )
 
     if eval_split != 0:
         split = int(len(docs) * eval_split)

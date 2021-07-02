@@ -14,6 +14,7 @@ from spacy import Language
 from thinc.model import set_dropout_rate
 from wasabi import Printer
 from pathlib import Path
+from spacy.scorer import PRFScore
 
 import json
 
@@ -38,8 +39,6 @@ def make_relation_extractor(
     *,
     threshold: float,
     batch_size: int,
-    dep: Path,
-    pos: Path,
 ):
     """Construct a RelationExtractor component."""
     return RelationExtractor(
@@ -48,8 +47,6 @@ def make_relation_extractor(
         name,
         threshold=threshold,
         batch_size=batch_size,
-        pos=pos,
-        dep=dep,
     )
 
 
@@ -62,8 +59,6 @@ class RelationExtractor(TrainablePipe):
         *,
         threshold: float,
         batch_size: int,
-        dep: Path,
-        pos: Path,
     ) -> None:
         """Initialize a relation extractor."""
         self.vocab = vocab
@@ -72,15 +67,6 @@ class RelationExtractor(TrainablePipe):
         self.cfg = {"labels": [], "threshold": threshold}
 
         self.batch_size = batch_size
-
-        self.dep_list = None
-        self.pos_list = None
-
-        with open(dep, "r") as f:
-            self.dep_list = json.load(f)
-
-        with open(pos, "r") as f:
-            self.pos_list = json.load(f)
 
     @property
     def labels(self) -> Tuple[str]:
@@ -115,29 +101,20 @@ class RelationExtractor(TrainablePipe):
 
         for doc in docs:
             score = []
-            entity_list = []
-            for ent in doc.ents:
-                if ent.label_ not in entity_list:
-                    entity_list.append(ent.label_)
 
             pairs = None
             if not doc.has_extension("rel"):
                 tokens = get_tokens(doc)
                 pairs = calculate_tensor(
                     create_pairs(tokens),
-                    entity_list,
                     self.cfg["labels"],
-                    self.dep_list,
-                    self.pos_list,
                 )
+
             elif doc.has_extension("rel") and len(doc._.rel) == 0:
                 tokens = get_tokens(doc)
                 pairs = calculate_tensor(
                     create_pairs(tokens),
-                    entity_list,
                     self.cfg["labels"],
-                    self.dep_list,
-                    self.pos_list,
                 )
             else:
                 pairs = doc._.rel
@@ -145,7 +122,6 @@ class RelationExtractor(TrainablePipe):
             for pair in pairs:
                 input_tensor = np.array(pairs[pair]["tensor"]).astype(np.float32)
                 input_tensor = self.model.ops.asarray([input_tensor])
-                # input_tensor = self.model.ops.asarray(pairs[pair]["tensor"])
                 output_tensor = self.model.predict(input_tensor)
                 score.append(self.model.ops.asarray(output_tensor))
             scores.append(self.model.ops.asarray(score))
@@ -161,29 +137,25 @@ class RelationExtractor(TrainablePipe):
                 tokens = get_tokens(doc)
                 pairs = calculate_tensor(
                     create_pairs(tokens),
-                    [],
                     self.cfg["labels"],
-                    self.dep_list,
-                    self.pos_list,
                 )
             elif doc.has_extension("rel") and len(doc._.rel) == 0:
                 tokens = get_tokens(doc)
                 pairs = calculate_tensor(
                     create_pairs(tokens),
-                    [],
                     self.cfg["labels"],
-                    self.dep_list,
-                    self.pos_list,
                 )
             else:
                 pairs = doc._.rel
 
             for pair, prediction in zip(pairs, score):
                 for pred, relation_key in zip(prediction, pairs[pair]["relation"]):
-                    if pred >= self.threshold:
-                        pairs[pair]["relation"][relation_key] = float(1.0)
-                    else:
-                        pairs[pair]["relation"][relation_key] = float(0.0)
+                    max_val = np.max(pred)
+                    for p in pred:
+                        if p >= self.threshold and p == max_val:
+                            pairs[pair]["relation"][relation_key] = float(1.0)
+                        else:
+                            pairs[pair]["relation"][relation_key] = float(0.0)
 
             doc._.rel = pairs
 
@@ -288,21 +260,21 @@ class RelationExtractor(TrainablePipe):
 
 def score_relations(examples: Iterable[Example], threshold: float) -> Dict[str, Any]:
     """Score a batch of examples."""
-    # micro_prf = PRFScore()
 
-    true_positive = 0
-    false_positive = 0
-    false_negative = 0
+    score_dict = {}
 
     for example in examples:
         gold = example.reference._.rel
         pred = example.predicted._.rel
 
-        # Only for one class
         for pairs_gold, pairs_pred in zip(gold, pred):
             for relation_gold, relation_pred in zip(
                 gold[pairs_gold]["relation"], pred[pairs_pred]["relation"]
             ):
+
+                if relation_gold not in score_dict:
+                    score_dict[relation_gold] = PRFScore()
+
                 y = gold[pairs_gold]["relation"][relation_gold]
                 x = pred[pairs_pred]["relation"][relation_pred]
 
@@ -312,28 +284,29 @@ def score_relations(examples: Iterable[Example], threshold: float) -> Dict[str, 
                     x = 0
 
                 if x == 1 and y == 1:
-                    true_positive += 1
+                    score_dict[relation_gold].tp += 1
                 elif x == 0 and y == 1:
-                    false_negative += 1
+                    score_dict[relation_gold].fn += 1
                 elif x == 1 and y == 0:
-                    false_positive += 1
+                    score_dict[relation_gold].fp += 1
 
-    precision = 0
-    if (true_positive + false_positive) != 0:
-        precision = true_positive / (true_positive + false_positive)
+    global_precision = 0
+    global_recall = 0
+    global_fscore = 0
 
-    recall = 0
-    if (true_positive + false_negative) != 0:
-        recall = true_positive / (true_positive + false_negative)
+    for relation in score_dict:
+        global_fscore += score_dict[relation].fscore
+        global_recall += score_dict[relation].recall
+        global_precision += score_dict[relation].precision
 
-    f_score = 0
-    if (precision + recall) != 0:
-        f_score = (2 * precision * recall) / (precision + recall)
+    global_fscore /= len(score_dict)
+    global_recall /= len(score_dict)
+    global_precision /= len(score_dict)
 
     return {
-        "rel_micro_p": float(precision),
-        "rel_micro_r": float(recall),
-        "rel_micro_f": float(f_score),
+        "rel_micro_p": float(global_precision),
+        "rel_micro_r": float(global_recall),
+        "rel_micro_f": float(global_fscore),
     }
 
 
@@ -343,6 +316,23 @@ def get_tokens(doc: Doc) -> List[Dict]:
     returnList = []
 
     for sent in doc.sents:
+
+        # Calculate sentence vector
+        sent_tensor = np.zeros(len(doc[0].tensor))
+        for tok in sent:
+            tensor = tok.tensor
+            if thinc.util.has_cupy:
+                import cupy
+
+                if isinstance(tensor, cupy._core.core.ndarray):
+                    sent_tensor += cupy.asnumpy(tensor)
+                elif isinstance(tensor, np.ndarray):
+                    sent_tensor += np.asarray(tensor)
+            else:
+                sent_tensor += np.asarray(tensor)
+
+        sent_tensor = np.array(sent_tensor / len(sent))
+
         for tok in sent:
 
             if tok.is_punct:
@@ -377,6 +367,24 @@ def get_tokens(doc: Doc) -> List[Dict]:
             elif doc[tok.i].ent_iob_ == "I":
                 continue
 
+            token_tensor_pooled = np.zeros(len(tok.tensor))
+            for tensor in token_tensor:
+                if thinc.util.has_cupy:
+                    import cupy
+
+                    if isinstance(tensor, cupy._core.core.ndarray):
+                        token_tensor_pooled += cupy.asnumpy(tensor)
+                    elif isinstance(tensor, np.ndarray):
+                        token_tensor_pooled += np.asarray(list(tensor))
+                else:
+                    token_tensor_pooled += np.asarray(list(tensor))
+
+            token_tensor_pooled = np.array(token_tensor_pooled / len(token_tensor))
+
+            # Masking
+            # if label != "None":
+            #    token_tensor_pooled = np.ones(len(tok.tensor))
+
             returnList.append(
                 {
                     "text": token_text,
@@ -386,7 +394,8 @@ def get_tokens(doc: Doc) -> List[Dict]:
                     "end": end_token,
                     "sent": token_doc,
                     "pos": pos_tags,
-                    "tensor": token_tensor,
+                    "tensor": token_tensor_pooled,
+                    "sent_tensor": sent_tensor,
                 }
             )
     return returnList
@@ -403,10 +412,11 @@ def create_pairs(token_list: List[Dict]) -> List[Dict]:
 
                     # Get dependencies
                     dep_list = []
+                    pos_list = []
                     for tok in token["tokens"]:
                         for tok2 in token2["tokens"]:
-                            tmp_list = calculate_dep_dist(tok, tok2)
-                            for dep in tmp_list:
+                            tmp_dep_list = calculate_dep_dist(tok, tok2)
+                            for dep in tmp_dep_list:
                                 if dep not in dep_list:
                                     dep_list.append(dep)
 
@@ -435,12 +445,80 @@ def create_pairs(token_list: List[Dict]) -> List[Dict]:
 
 def calculate_tensor(
     pairs: List[Dict],
-    mask_entites: List[str],
     relations: List[str],
-    dep_list: list,
-    pos_list: list,
 ) -> Dict:
     """Calculate tensor from token pairs"""
+
+    dep_list = [
+        "ACL",
+        "ACOMP",
+        "ADVCL",
+        "ADVMOD",
+        "AGENT",
+        "AMOD",
+        "APPOS",
+        "ATTR",
+        "AUX",
+        "AUXPASS",
+        "CASE",
+        "CC",
+        "CCOMP",
+        "COMPOUND",
+        "CONJ",
+        "CSUBJ",
+        "CSUBJPASS",
+        "DATIVE",
+        "DEP",
+        "DET",
+        "DOBJ",
+        "EXPL",
+        "INTJ",
+        "MARK",
+        "META",
+        "NEG",
+        "NOUNMOD",
+        "NPMOD",
+        "NSUBJ",
+        "NSUBJPASS",
+        "NUMMOD",
+        "OPRD",
+        "PARATAXIS",
+        "PCOMP",
+        "POBJ",
+        "POSS",
+        "PRECONJ",
+        "PREDET",
+        "PREP",
+        "PRT",
+        "PUNCT",
+        "QUANTMOD",
+        "RELCL",
+        "ROOT",
+        "XCOMP",
+        "NPADVMOD",
+        "NMOD",
+    ]
+    pos_list = [
+        "ADJ",
+        "ADP",
+        "ADV",
+        "AUX",
+        "CONJ",
+        "CCONJ",
+        "DET",
+        "INTJ",
+        "NOUN",
+        "NUM",
+        "PART",
+        "PRON",
+        "PROPN",
+        "PUNCT",
+        "SCONJ",
+        "SYM",
+        "VERB",
+        "X",
+        "SPACE",
+    ]
 
     pair_dict = {}
     for pair in pairs:
@@ -462,40 +540,17 @@ def calculate_tensor(
         dep_vector = dict_to_vector(dep_dict)
         pos_vector = dict_to_vector(pos_dict)
         dist_vector = np.array([pair["dist"], pair["dep_dist"], pair["has_label"]])
-        token_vector = None
-
-        sum_vector = np.zeros(len(pair["tuple"][0]["tensor"][0]))
-        sum_tokens = 0
-
-        for token in pair["tuple"]:
-            # Masking
-            if token["label"] not in mask_entites:
-                for tensor in token["tensor"]:
-
-                    if thinc.util.has_cupy:
-                        import cupy
-
-                        if isinstance(tensor, cupy._core.core.ndarray):
-                            sum_vector += cupy.asnumpy(tensor)
-                        elif isinstance(tensor, np.ndarray):
-                            sum_vector += np.asarray(list(tensor))
-                    else:
-                        sum_vector += np.asarray(list(tensor))
-
-                    sum_tokens += 1
-
-        if sum_tokens != 0:
-            token_vector = sum_vector / sum_tokens
-        else:
-            continue
+        token_vector = np.concatenate(
+            (
+                pair["tuple"][0]["tensor"],
+                pair["tuple"][1]["tensor"],
+                pair["tuple"][0]["sent_tensor"],
+            )
+        )
 
         input_tensor = np.concatenate(
             (token_vector, dep_vector, pos_vector, dist_vector)
-        ).astype(np.float64)
-
-        pair["relation"] = {}
-        for relation in relations:
-            pair["relation"][relation] = 0
+        )
 
         pair_key = (
             pair["tuple"][0]["start"],
@@ -520,7 +575,7 @@ def calculate_tensor(
 
 # Support functions
 def create_dict(li: list) -> Dict:
-    """transform dictionary to vector"""
+    """transform list to dictionary"""
     returnDict = {}
     for label in li:
         returnDict[label] = 0
@@ -537,7 +592,6 @@ def dict_to_vector(d: Dict):
     return return_vector
 
 
-# Calculate dependency relation
 def calculate_dep_dist(token1, token2) -> List[str]:
     """Get dependencies between token1 and token2"""
     ancestors = list(token1.ancestors)
