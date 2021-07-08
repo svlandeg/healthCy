@@ -315,12 +315,22 @@ def get_tokens(doc: Doc) -> List[Dict]:
     """Extract token information from doc and merge entities to one"""
     returnList = []
 
+    # tok2vec
+    vector_size = len(doc[0].tensor)
+
     for sent in doc.sents:
 
         # Calculate sentence vector
-        sent_tensor = np.zeros(len(doc[0].tensor))
+        sent_tensor = np.zeros(vector_size)
         for tok in sent:
-            tensor = tok.tensor
+            if tok.is_space or tok.is_punct:
+                continue
+
+            if tok.ent_iob_ == "B" or tok.ent_iob_ == "I":
+                tensor = np.ones(vector_size)
+            else:
+                tensor = tok.tensor
+
             if thinc.util.has_cupy:
                 import cupy
 
@@ -333,15 +343,18 @@ def get_tokens(doc: Doc) -> List[Dict]:
 
         sent_tensor = np.array(sent_tensor / len(sent))
 
+        # Iterate through all tokens per sentence
         for tok in sent:
 
-            if tok.is_punct:
+            if tok.is_punct or tok.is_space:
                 continue
 
             token_text = tok.text
             token_list = [tok]
             token_doc = sent
+
             token_tensor = [tok.tensor]
+
             label = "None"
             pos_tags = [tok.pos_]
             start_token = tok.i
@@ -353,6 +366,9 @@ def get_tokens(doc: Doc) -> List[Dict]:
 
                 if start_token + 1 < len(doc):
                     for tok2 in doc[start_token + 1 :]:
+                        if tok2.is_punct or tok2.is_space:
+                            continue
+
                         if (
                             doc[tok2.i].ent_type_ == label
                             and doc[tok2.i].ent_iob_ == "I"
@@ -362,12 +378,12 @@ def get_tokens(doc: Doc) -> List[Dict]:
                             token_tensor.append(tok2.tensor)
                             token_text += f" {tok2.text}"
                             end_token = tok2.i
-                        if doc[tok2.i].ent_iob_ == "B":
+                        elif doc[tok2.i].ent_iob_ == "B":
                             break
             elif doc[tok.i].ent_iob_ == "I":
                 continue
 
-            token_tensor_pooled = np.zeros(len(tok.tensor))
+            token_tensor_pooled = np.zeros(vector_size)
             for tensor in token_tensor:
                 if thinc.util.has_cupy:
                     import cupy
@@ -382,8 +398,8 @@ def get_tokens(doc: Doc) -> List[Dict]:
             token_tensor_pooled = np.array(token_tensor_pooled / len(token_tensor))
 
             # Masking
-            # if label != "None":
-            #    token_tensor_pooled = np.ones(len(tok.tensor))
+            if label != "None":
+                token_tensor_pooled = np.ones(vector_size)
 
             returnList.append(
                 {
@@ -410,6 +426,10 @@ def create_pairs(token_list: List[Dict]) -> List[Dict]:
             for token2 in token_list[index + 1 :]:
                 if token["sent"] == token2["sent"]:
 
+                    has_label = 0
+                    if token["label"] != "None" or token2["label"] != "None":
+                        has_label = 1
+
                     # Get dependencies
                     dep_list = []
                     pos_list = []
@@ -425,10 +445,6 @@ def create_pairs(token_list: List[Dict]) -> List[Dict]:
                         if pos2 not in pos_list:
                             pos_list.append(pos2)
 
-                    has_label = 0
-                    if token["label"] != "None" or token2["label"] != "None":
-                        has_label = 1
-
                     entry = {
                         "tuple": (token, token2),
                         "text": (token["text"], token2["text"]),
@@ -438,7 +454,10 @@ def create_pairs(token_list: List[Dict]) -> List[Dict]:
                         "dep_dist": len(dep_list),
                         "has_label": has_label,
                     }
-                    pair_list.append(entry)
+
+                    # Filtering pairs
+                    if has_label == 1:
+                        pair_list.append(entry)
         index += 1
     return pair_list
 
@@ -539,7 +558,7 @@ def calculate_tensor(
 
         dep_vector = dict_to_vector(dep_dict)
         pos_vector = dict_to_vector(pos_dict)
-        dist_vector = np.array([pair["dist"], pair["dep_dist"], pair["has_label"]])
+        dist_vector = np.array([pair["dist"], pair["dep_dist"]])
         token_vector = np.concatenate(
             (
                 pair["tuple"][0]["tensor"],

@@ -100,7 +100,7 @@ def main(
 
     if eval_split != 0:
         split = int(len(docs) * eval_split)
-        random.shuffle(docs)
+        # random.shuffle(docs)
 
         train = docs[split:]
         dev = docs[:split]

@@ -12,6 +12,7 @@ vars:
   ner_model: "../ner_component/training/model-best"
   trained_model: "training/model-best"
   script_data: "scripts/rel_parse_data.py"
+  script_pipeline: "scripts/rel_pipeline.py"
 
 # These are the directories that the project needs. The project CLI will make
 # sure that they always exist.
@@ -48,6 +49,7 @@ commands:
       - ${vars.annotations}
       - ${vars.annotations_test}
       - ${vars.script_data}
+      - ${vars.script_pipeline}
     outputs:
       - ${vars.train}
       - ${vars.dev}
@@ -62,6 +64,7 @@ commands:
       - ${vars.annotations}
       - ${vars.annotations_test}
       - ${vars.script_data}
+      - ${vars.script_pipeline}
     outputs:
       - ${vars.train}
       - ${vars.dev}

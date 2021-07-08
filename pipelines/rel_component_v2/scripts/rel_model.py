@@ -21,9 +21,9 @@ def create_classification_layer(
 ) -> Model[Floats2d, Floats2d]:
     with Model.define_operators({">>": chain}):
         return (
-            Linear(nO=516, nI=nI)
-            >> Linear(nO=128, nI=516)
-            >> Linear(nO=nO, nI=128)
+            Linear(nO=128, nI=nI)
+            >> Linear(nO=64, nI=128)
+            >> Linear(nO=nO, nI=64)
             >> Logistic()
         )
 

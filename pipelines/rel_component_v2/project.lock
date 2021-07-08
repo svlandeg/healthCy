@@ -7,18 +7,20 @@ data_gpu:
       . 0 1 ../ner_component/training/model-best
   deps:
     - path: assets/annotations.jsonl
-      md5: bb6eed0018f89b32c5121da6dadebb31
+      md5: c8e0d53fc5c3d0479d7f4cb44fd85499
     - path: assets/annotations_test.jsonl
       md5: d7c42f334a877a85a705e0be0f360b75
     - path: scripts/rel_parse_data.py
-      md5: 644c566f7bec340c1fdfdd3588784685
+      md5: afeddf013ffaecd78ee4b139fc007984
+    - path: scripts/rel_pipeline.py
+      md5: 9ad08044ab66585b56c0130e7934a465
   outs:
     - path: data/train.spacy
-      md5: 64dcbada9fdfafabb5ca8dfaf056cdb2
+      md5: 67c0f8578454dcc31be6d1d7fe66aa87
     - path: data/dev.spacy
-      md5: b7c170b6bd000d4b521e11d1d5149fcd
+      md5: 89f4335af647ac82ccdf6aaaddf6e320
     - path: data/test.spacy
-      md5: 4402b138da400b60ce367eb3858ee867
+      md5: aa2b6ebbc6f3405909fc11b0d4d93fb1
   spacy_version: 3.0.6
   spacy_git_version: df3444421
 data_cpu:
@@ -52,18 +54,17 @@ train_gpu:
   script:
     - python -m spacy train configs/rel_config.cfg --output training --paths.train
       data/train.spacy --paths.dev data/dev.spacy --paths.ner_model ../ner_component/training/model-best
-      --paths.dep assets/dependencies.json --paths.pos assets/partofspeech.json  -c
-      scripts/rel_reader.py --gpu-id 0
+      -c scripts/rel_reader.py --gpu-id 0
   deps:
     - path: configs/rel_config.cfg
-      md5: 71ff0965f98eded49e284a1b72e07868
+      md5: 4dafdee1c9ea7e612bceea3e14745074
     - path: data/train.spacy
-      md5: f02d1b7b0f6fe2129476a75c805f53e8
+      md5: 67c0f8578454dcc31be6d1d7fe66aa87
     - path: data/dev.spacy
-      md5: 003a3e889d796e276fdf26b9d60e2569
+      md5: 89f4335af647ac82ccdf6aaaddf6e320
   outs:
     - path: training/model-best
-      md5: 14b1d11a5eb92cc09348dfb2293f8155
+      md5: 2afe116a6ee1bb41dc28065eca6aefdd
   spacy_version: 3.0.6
   spacy_git_version: df3444421
 eval_gpu:
@@ -72,9 +73,9 @@ eval_gpu:
     - python ./scripts/rel_eval.py data/test.spacy 1 training/model-best
   deps:
     - path: data/test.spacy
-      md5: a796616c5a44b2e3b0f7410313a7c9ca
+      md5: 53d0fbcedbac402062bda39b388144b0
     - path: training/model-best
-      md5: dd21ac5f0bca4171fa015f4f346af7f1
+      md5: 56bf8564370f2cc0108cab40c3d27b07
   outs: []
   spacy_version: 3.0.6
   spacy_git_version: df3444421

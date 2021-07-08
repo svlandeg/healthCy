@@ -1,39 +1,43 @@
 {
-    "theme": "basic",
     "custom_theme": {
-        "accept":"#72CE71",
-        "reject":"#E86A6A",
-        "ignore":"#1A1919",
-        "undo":"#1A1919",
+        "accept":"#98c379",
+        "reject":"#e06c75",
+        "ignore":"#181a1f",
+        "undo":"#181a1f",
 
-        "bgCard":"#3C3C3C",
-        "bgCardSecondary":"#534E4E",
-        "bgCardTertiary":"#534E4E",
-        "bgCardQuaternary":"#534E4E",
+        "bgCard":"#1d1f23",
+        "bgCardSecondary":"#181a1f",
+        "bgCardTertiary":"#121212",
+        "bgCardQuaternary":"#383e4a",
 
-        "bgPage":"#292929",
-        "bgSidebar":"#3C3C3C",
-        "bgSidebarDark":"#292929",
+        "bgPage":"#181a1f",
+        "bgSidebar":"#181a1f",
+        "bgSidebarDark":"#1d1f23",
 
-        "bgHighlight":"#F559B7",
-        "bgLowlight":"#9A3C75",
+        "bgHighlight":"#314365",
+        "bgLowlight":"#1d1f23",
 
-        "bgCardTitle":"#3C3C3C",
-        "bgProgress":"#dadada",
-        "bgButton":"#1A1919",
-        "bgMeta":"#292929",
+        "bgCardTitle":"#1d1f23",
+        "bgProgress":"#e5c07b",
+        "bgButton":"#ffffff",
+        "bgMeta":"#528bff",
 
+        "colorText":"#e5c07b",
+        "colorMeta":"#61afef",
+        "colorMessage":"f44747",
 
-        "colorText":"#dadada",
-        "colorSidebar":"#dadada",
-        "colorSidebarHeadline":"#dadada",
-        "colorSidebarLabel":"#dadada",
-        "colorButton":"#dadada",
-        "colorHighlightLabel":"#dadada",
-        "colorCardTitle":"#dadada",
+        "colorSidebar":"#e5c07b",
+        "colorSidebarHeadline":"#56b6c2",
+        "colorSidebarLabel":"#e5c07b",
 
-        "cardBorder":"0px",
-        "cardShadow":"0px"
+        "colorButton":"#696969",
+        "colorHighlightLabel":"#61afef",
+        "colorCardTitle":"#56b6c2",
+
+        "cardBorder":"1px solid #696969",
+        "cardShadow":"0px",
+        "cardBorderRadius":"0",
+        "sidebarBorder":"none"
 
     },
     "buttons": ["accept", "reject", "ignore", "undo"],
@@ -46,6 +50,7 @@
     "db_settings": {},
     "api_keys": {},
     "validate": true,
+    "force_stream_order": false,
     "auto_exclude_current": true,
     "instant_submit": false,
     "feed_overlap": false,
@@ -62,5 +67,6 @@
     "global_css": null,
     "javascript": null,
     "writing_dir": "ltr",
-    "show_whitespace": false
+    "show_whitespace": false,
+    "exclude_by": "task"
   }

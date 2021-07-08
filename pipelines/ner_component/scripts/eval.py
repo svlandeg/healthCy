@@ -4,7 +4,7 @@ from spacy import displacy
 
 nlp = spacy.load("../training/model-best")
 
-example = "This helped my joint pain"
+example = "Bought this because of Covid 19"
 doc = nlp(example)
 
 for token in doc:
