@@ -15,3 +15,13 @@ train:
       md5: 16323c22ef0575aa35e45df5d765f4b3
   spacy_version: 3.1.0
   spacy_git_version: 530b5d72f
+eval:
+  cmd: python -m spacy run eval
+  script:
+    - python scripts/eval.py training/model-best 0
+  deps:
+    - path: training/model-best
+      md5: 16323c22ef0575aa35e45df5d765f4b3
+  outs: []
+  spacy_version: 3.1.0
+  spacy_git_version: 530b5d72f

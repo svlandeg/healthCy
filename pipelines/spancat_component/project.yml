@@ -43,6 +43,14 @@ commands:
     outputs:
       - ${vars.model}
 
+  - name: "eval"
+    help: "Eval the trained Spancat model"
+    script:
+      - "python scripts/eval.py ${vars.model} ${vars.gpu}"
+    deps:
+      - ${vars.model}
+
+
 
 
 
