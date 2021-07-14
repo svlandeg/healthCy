@@ -1,0 +1,27 @@
+train:
+  cmd: python -m spacy run train
+  script:
+    - python -m spacy train configs/config.cfg --output training --paths.train assets/train.spacy
+      --paths.dev assets/dev.spacy --gpu-id 0
+  deps:
+    - path: configs/config.cfg
+      md5: 5a6692e2e3144c9cddee68ae0bfc452f
+    - path: assets/train.spacy
+      md5: 0b9c4fc6fc84e5cf834ab954e6e3ee0d
+    - path: assets/dev.spacy
+      md5: a5c3eacf5bc76537ae15a936446cb398
+  outs:
+    - path: training/model-best
+      md5: 16323c22ef0575aa35e45df5d765f4b3
+  spacy_version: 3.1.0
+  spacy_git_version: 530b5d72f
+eval:
+  cmd: python -m spacy run eval
+  script:
+    - python scripts/eval.py training/model-best 0
+  deps:
+    - path: training/model-best
+      md5: 16323c22ef0575aa35e45df5d765f4b3
+  outs: []
+  spacy_version: 3.1.0
+  spacy_git_version: 530b5d72f
