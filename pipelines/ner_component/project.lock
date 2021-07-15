@@ -5,15 +5,15 @@ train_gpu:
       --paths.dev assets/dev.spacy --gpu-id 0
   deps:
     - path: configs/config.cfg
-      md5: 32a8e1db193e843347472ca63ff635e4
+      md5: cb69650f6131f7afda1fa1896b2a0970
     - path: assets/train.spacy
       md5: 63ada82889659ff650667e7527445cbe
     - path: assets/dev.spacy
       md5: b4353f690f98ce14bffb31f1e0ebf42e
   outs:
     - path: training/model-best
-      md5: cd8df6f787d402e379342c80a70b71b3
+      md5: e4d8e03a654cdc76d96877bac277c74b
     - path: training/model-last
-      md5: 5f2763a871f5f6fc905725997832a79e
-  spacy_version: 3.0.6
-  spacy_git_version: df3444421
+      md5: af49721bfe0cd80a57942c9592c00539
+  spacy_version: 3.1.0
+  spacy_git_version: 530b5d72f
