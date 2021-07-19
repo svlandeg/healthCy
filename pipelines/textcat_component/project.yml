@@ -1,0 +1,64 @@
+title: "Example project of textcat"
+description: "This example project shows how to implement textcat."
+
+# Variables can be referenced across the project.yml using ${vars.var_name}
+vars:
+  config: "configs/config.cfg"
+  annotation: "assets/annotation.jsonl"
+  train: "data/train.spacy"
+  dev: "data/dev.spacy"
+  trained_model: "training/model-best"
+  gpu: 0
+  eval_split : 0.2
+
+# These are the directories that the project needs. The project CLI will make
+# sure that they always exist.
+directories: ["scripts", "configs", "assets", "data", "training"]
+
+# Assets that should be downloaded or available in the directory. You can replace
+# this with your own input data.
+assets:
+    - dest: ${vars.train}
+      description: "Training data"
+    - dest: ${vars.dev}
+      description: "Development data"
+
+workflows:
+  all:
+    - train
+
+# Project commands, specified in a style similar to CI config files (e.g. Azure
+# pipelines). The name is the command name that lets you trigger the command
+# via "spacy project run [command] [path]". The help message is optional and
+# shown when executing "spacy project run [optional command] [path] --help".
+commands:
+
+  - name: "data"
+    help: "Parse data"
+    script:
+      - "python scripts/parse_data.py ${vars.annotation} data/train.spacy data/dev.spacy ${vars.eval_split}"
+    deps:
+      - ${vars.annotation}
+      - scripts/parse_data.py
+    outputs:
+      - ${vars.train}
+      - ${vars.dev}
+
+  - name: "train"
+    help: "Train the textcat"
+    script:
+      - "python -m spacy train ${vars.config} --output training --paths.train ${vars.train} --paths.dev ${vars.dev} --gpu-id ${vars.gpu}"
+    deps:
+      - ${vars.config}
+      - ${vars.train}
+      - ${vars.dev}
+    outputs:
+      - ${vars.trained_model}
+  
+
+
+
+
+
+
+

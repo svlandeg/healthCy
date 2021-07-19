@@ -2,10 +2,11 @@
     "custom_theme": {
         "accept":"#98c379",
         "reject":"#e06c75",
-        "ignore":"#181a1f",
-        "undo":"#181a1f",
+        "ignore":"#56b6c2",
+        "undo":"#56b6c2",
+        "colorButton":"#181a1f",
 
-        "bgCard":"#1d1f23",
+        "bgCard":"#181a1f",
         "bgCardSecondary":"#181a1f",
         "bgCardTertiary":"#121212",
         "bgCardQuaternary":"#383e4a",
@@ -19,24 +20,23 @@
 
         "bgCardTitle":"#1d1f23",
         "bgProgress":"#e5c07b",
-        "bgButton":"#ffffff",
-        "bgMeta":"#528bff",
+        "bgButton":"#696565",
+        "bgMeta":"#181a1f",
 
         "colorText":"#e5c07b",
-        "colorMeta":"#61afef",
-        "colorMessage":"f44747",
+        "colorMeta":"#56b6c2",
+        "colorMessage":"#f44747",
 
         "colorSidebar":"#e5c07b",
         "colorSidebarHeadline":"#56b6c2",
         "colorSidebarLabel":"#e5c07b",
 
-        "colorButton":"#696969",
-        "colorHighlightLabel":"#61afef",
+        "colorHighlightLabel":"#56b6c2",
         "colorCardTitle":"#56b6c2",
 
-        "cardBorder":"1px solid #696969",
+        "cardBorder":"2px solid #696565",
         "cardShadow":"0px",
-        "cardBorderRadius":"0",
+        "cardBorderRadius":"5px",
         "sidebarBorder":"none"
 
     },
@@ -67,6 +67,5 @@
     "global_css": null,
     "javascript": null,
     "writing_dir": "ltr",
-    "show_whitespace": false,
-    "exclude_by": "task"
+    "show_whitespace": false
   }

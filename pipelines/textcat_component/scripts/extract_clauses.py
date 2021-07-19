@@ -32,6 +32,7 @@ def main(ner_model: Path, examples: Path, gpu: bool):
         "This helped asthma but made inflammation worse",
         "This is great for energy, muscle growth and bone health",
         "This increases energy and decreases fatigue",
+        "This helps hair, nails and skin to grow stronger",
     ]
 
     for example in example_batch:
@@ -99,7 +100,7 @@ def split_sentence(sentence: Span, verb_chunks: List[List[Token]]) -> List[Span]
         for i in range(0, len(split_indices)):
             split_sentences.append(sentence.doc[lastIndex : split_indices[i]])
             lastIndex = split_indices[i]
-        split_sentences.append(sentence.doc[lastIndex : sentence_boundaries[1] + 1])
+        split_sentences.append(sentence.doc[lastIndex + 1 : sentence_boundaries[1] + 1])
 
     else:
         return [sentence]
@@ -111,13 +112,13 @@ def construct_statement(clauses: Span) -> List[Tuple[str, Span]]:
 
     statement_list = []
     for clause in clauses:
-        clause_text = str(clause)
         for index in range(len(clause.ents)):
+            clause_text = str(clause)
             clause_text = clause_text.replace(
                 str(clause.ents[index]), f"<{clause.ents[index].label_}>"
             )
-        clause_text = clause_text.strip()
-        statement_list.append((clause_text, clause.ents))
+            clause_text = clause_text.strip()
+            statement_list.append((clause_text, clause.ents[index]))
     return statement_list
 
 

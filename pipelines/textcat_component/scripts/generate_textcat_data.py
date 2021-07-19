@@ -41,9 +41,12 @@ def main(ner_model: Path, output: Path, gpu: bool):
         spacy.prefer_gpu()
 
     nlp = spacy.load(ner_model)
+    # nlp.add_pipe("benepar", config={"model": "benepar_en3"})
+
+    filter_keyword = ["worse", "caused", "diagnosed", "suffering"]
 
     # Generate data
-    review_sample = review_df.sample(n=5000)
+    review_sample = review_df.sample(n=10000)
     json_file = []
 
     for index, row in review_sample.iterrows():
@@ -53,7 +56,17 @@ def main(ner_model: Path, output: Path, gpu: bool):
             continue
 
         doc = nlp(text)
-        if len(doc.ents) > 0:
+        hasKeyword = False
+
+        if len(filter_keyword) > 0:
+            for keyword in filter_keyword:
+                if keyword in doc.text:
+                    hasKeyword = True
+
+        else:
+            hasKeyword = True
+
+        if len(doc.ents) > 0 and hasKeyword:
             clauses = extract_clauses(doc)
 
             for clause in clauses:
