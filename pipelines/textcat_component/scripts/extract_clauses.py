@@ -10,22 +10,12 @@ import json
 import secrets
 
 
-def main(ner_model: Path, examples: Path, gpu: bool):
+def main(ner_model: Path, gpu: bool):
 
     if gpu:
         spacy.prefer_gpu()
 
     nlp = spacy.load(ner_model)
-
-    example_reviews = []
-    with open(examples) as f:
-        example_reviews = json.load(f)
-        f.close()
-
-    example_batch = []
-    amount = 25
-    for i in range(amount):
-        example_batch.append(secrets.choice(example_reviews))
 
     example_batch = [
         "This helped joint pain barely",
@@ -36,7 +26,6 @@ def main(ner_model: Path, examples: Path, gpu: bool):
     ]
 
     for example in example_batch:
-        # review = example["text"]
         review = example
         doc = nlp(review)
 
@@ -113,12 +102,27 @@ def construct_statement(clauses: Span) -> List[Tuple[str, Span]]:
     statement_list = []
     for clause in clauses:
         for index in range(len(clause.ents)):
-            clause_text = str(clause)
-            clause_text = clause_text.replace(
-                str(clause.ents[index]), f"<{clause.ents[index].label_}>"
-            )
-            clause_text = clause_text.strip()
-            statement_list.append((clause_text, clause.ents[index]))
+            start = clause.ents[index].start
+            end = clause.ents[index].end
+
+            words = []
+            replaced = False
+
+            for word in clause:
+                if word.i >= start and word.i < end and not replaced:
+                    words.append(f"<{clause.ents[index].label_}>")
+                    replaced = True
+                elif not (word.i >= start and word.i < end):
+                    words.append(word.text)
+
+            # clause_text = str(clause)
+            # clause_text = clause_text.replace(
+            #    str(clause.ents[index]), f"<{clause.ents[index].label_}>"
+            # )
+            # clause_text = clause_text.strip()
+            doc = Doc(clause.doc.vocab, words=words)
+            statement_list.append((doc, clause.ents[index]))
+
     return statement_list
 
 

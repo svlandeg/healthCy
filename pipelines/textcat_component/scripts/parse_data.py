@@ -19,11 +19,12 @@ def main(
 ):
     """Creating the corpus from the Prodigy annotations."""
 
-    vocab = Vocab()
-
     examples = []
-
     label_dict = {}
+    nlp = spacy.load(
+        "en_core_web_lg", disable=["tagger", "parser", "ner", "lemmatizer"]
+    )
+
     with json_loc.open("r", encoding="utf8") as jsonfile:
         for line in jsonfile:
             example = json.loads(line)
@@ -35,24 +36,25 @@ def main(
                 if label not in label_dict:
                     label_dict[label] = []
 
+    msg.info(f"{len(examples)} examples loaded")
+
     for example in examples:
         if example["answer"] == "accept":
 
             # Parse the tokens
-            words = [t["text"] for t in example["tokens"]]
-            spaces = [t["ws"] for t in example["tokens"]]
-            doc = Doc(vocab, words=words, spaces=spaces)
+            doc = nlp(example["text"])
 
             labels = example["accept"]
 
             cats_dict = {}
-            for label in labels:
-                for label2x in label_dict.keys():
-                    cats_dict[label2x] = 0.0
+            for label in label_dict.keys():
+                cats_dict[label] = 0.0
 
+            for label in labels:
                 cats_dict[label] = 1.0
-                doc._.cats = cats_dict
-                label_dict[label].append(doc)
+
+            doc.cats = cats_dict
+            label_dict[label].append(doc)
 
     train = []
     dev = []

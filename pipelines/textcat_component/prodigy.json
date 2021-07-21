@@ -37,7 +37,12 @@
         "cardBorder":"2px solid #696565",
         "cardShadow":"0px",
         "cardBorderRadius":"5px",
-        "sidebarBorder":"none"
+        "sidebarBorder":"none",
+
+        "palettes": {
+            "relations": ["#4975B7","#2B8B40","#B24141"],
+            "spans": ["#4975B7","#2B8B40","#B24141"]
+        }
 
     },
     "buttons": ["accept", "reject", "ignore", "undo"],

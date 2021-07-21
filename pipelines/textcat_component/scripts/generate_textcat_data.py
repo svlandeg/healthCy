@@ -50,7 +50,6 @@ def main(ner_model: Path, output: Path, gpu: bool):
     json_file = []
 
     for index, row in review_sample.iterrows():
-        json_entry = {"text": ""}
         text = (str(row["title"]) + ". " + str(row["text"])).strip()
         if len(text) > 512:
             continue
@@ -70,6 +69,7 @@ def main(ner_model: Path, output: Path, gpu: bool):
             clauses = extract_clauses(doc)
 
             for clause in clauses:
+                json_entry = {"text": ""}
                 json_entry["text"] = str(clause[0])
                 json_entry["meta"] = {"entities": str(clause[1])}
                 json_file.append(json_entry)
