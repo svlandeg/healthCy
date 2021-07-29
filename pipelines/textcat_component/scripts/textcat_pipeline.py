@@ -4,15 +4,13 @@ from thinc.api import get_array_module, Model, Optimizer, set_dropout_rate, Conf
 from thinc.types import Floats2d
 import numpy
 
-from .trainable_pipe import TrainablePipe
-from ..language import Language
-from ..training import Example, validate_examples, validate_get_examples
-from ..errors import Errors
-from ..scorer import Scorer
-from ..tokens import Doc
-from ..vocab import Vocab
-
-from extract_clauses import extract_clauses
+from spacy.pipeline import TrainablePipe
+from spacy.language import Language
+from spacy.training import Example, validate_examples, validate_get_examples
+from spacy.errors import Errors
+from spacy.scorer import Scorer
+from spacy.tokens import Span, Doc, Token
+from spacy.vocab import Vocab
 
 single_label_default_config = """
 [model]
@@ -100,7 +98,12 @@ class TextCategorizer(TrainablePipe):
     """
 
     def __init__(
-        self, vocab: Vocab, model: Model, name: str = "textcat", *, threshold: float
+        self,
+        vocab: Vocab,
+        model: Model,
+        name: str = "textcat_healthsea",
+        *,
+        threshold: float,
     ) -> None:
         """Initialize a text categorizer for single-label classification.
         vocab (Vocab): The shared vocabulary.
@@ -131,24 +134,53 @@ class TextCategorizer(TrainablePipe):
         """
         return self.labels
 
+    def __call__(self, doc: Doc) -> Doc:
+        """Apply the pipe to a Doc."""
+        predictions = self.predict_statements([doc])
+        self.set_annotations_statements([doc], predictions)
+        return doc
+
+    def predict_statements(self, docs: Iterable[Doc]):
+        statement_list = []
+        for doc in docs:
+            statements = extract_clauses(doc)
+            statement_list += statements
+
+        statement_docs = [statement[0] for statement in statement_list]
+
+        scores = self.model.predict(statement_docs)
+        scores = self.model.ops.asarray(scores)
+        return scores
+
+    def set_annotations_statements(self, docs: Iterable[Doc], scores) -> None:
+        index = 0
+        for doc in docs:
+            statements = extract_clauses(doc)
+            classified_statements = []
+            for statement in statements:
+                prediction = scores[index]
+                cats = {}
+
+                for value, label in zip(prediction, self.labels):
+                    cats[label] = value
+
+                classified_statements.append((statement[0], statement[1], cats))
+                index += 1
+            doc.set_extension("statements", default=[], force=True)
+            doc._.statements = classified_statements
+
     def predict(self, docs: Iterable[Doc]):
         """Apply the pipeline's model to a batch of docs, without modifying them.
         docs (Iterable[Doc]): The documents to predict.
         RETURNS: The models prediction for each document.
         DOCS: https://spacy.io/api/textcategorizer#predict
         """
-
         if not any(len(doc) for doc in docs):
             # Handle cases where there are no tokens in any docs.
             tensors = [doc.tensor for doc in docs]
             xp = get_array_module(tensors)
             scores = xp.zeros((len(docs), len(self.labels)))
             return scores
-
-        statement_list = []
-        for doc in docs:
-            statements = extract_clauses()
-
         scores = self.model.predict(docs)
         scores = self.model.ops.asarray(scores)
         return scores
@@ -359,3 +391,106 @@ class TextCategorizer(TrainablePipe):
         for ex in examples:
             if list(ex.reference.cats.values()).count(1.0) > 1:
                 raise ValueError(Errors.E895.format(value=ex.reference.cats))
+
+
+# Clause Segmentation
+
+
+def get_verb_chunk(sentence: Span) -> List[List[Token]]:
+    verb_chunks = []
+    last_chunk = 0
+    for word in sentence:
+        if (
+            (word.pos_ == "VERB" or word.pos_ == "AUX")
+            and word.i + 1 < len(word.doc)
+            and word.i > last_chunk
+        ):
+            verb_chunk = [word]
+            for wordx2 in sentence[word.i + 1 :]:
+                if (
+                    wordx2.pos_ == "VERB"
+                    or wordx2.pos_ == "AUX"
+                    or wordx2.pos_ == "PART"
+                ):
+                    verb_chunk.append(wordx2)
+                else:
+                    break
+
+            verb_chunks.append(verb_chunk)
+            last_chunk = verb_chunk[-1].i
+
+    return verb_chunks
+
+
+def split_sentence(sentence: Span, verb_chunks: List[List[Token]]) -> List[Span]:
+
+    split_triggers = ["CCONJ"]
+    split_indices = []
+    split_sentences = []
+    sentence_boundaries = [sentence[0].i, sentence[-1].i]
+
+    if len(verb_chunks) > 1:
+        return [sentence]
+
+    for i in range(0, len(verb_chunks) - 1):
+        start = verb_chunks[i][-1].i
+        end = verb_chunks[i + 1][0].i
+
+        if start + 1 == end:
+            continue
+
+        for index in range(end, start, -1):
+            if sentence.doc[index].pos_ in split_triggers:
+                split_indices.append(sentence.doc[index].i)
+                break
+
+    if len(split_indices) > 0:
+        lastIndex = sentence_boundaries[0]
+        for i in range(0, len(split_indices)):
+            split_sentences.append(sentence.doc[lastIndex : split_indices[i]])
+            lastIndex = split_indices[i]
+        split_sentences.append(sentence.doc[lastIndex + 1 : sentence_boundaries[1] + 1])
+
+    else:
+        return [sentence]
+
+    return split_sentences
+
+
+def construct_statement(clauses: Span) -> List[Tuple[Doc, List[Span]]]:
+
+    statement_list = []
+    for clause in clauses:
+        if len(clause.ents) > 0:
+            for index in range(len(clause.ents)):
+                start = clause.ents[index].start
+                end = clause.ents[index].end
+
+                words = []
+                replaced = False
+
+                for word in clause:
+                    if word.i >= start and word.i < end and not replaced:
+                        words.append(f"<{clause.ents[index].label_}>")
+                        replaced = True
+                    elif not (word.i >= start and word.i < end):
+                        words.append(word.text)
+
+                doc = Doc(clause.doc.vocab, words=words)
+                statement_list.append((doc, clause.ents[index]))
+        else:
+            words = [word.text for word in clause]
+            doc = Doc(clause.doc.vocab, words=words)
+            statement_list.append((doc, []))
+
+    return statement_list
+
+
+def extract_clauses(doc: Doc) -> List[Tuple[Doc, Span]]:
+    return_list = []
+    for sentence in doc.sents:
+        verb_chunks = get_verb_chunk(sentence)
+        split_clauses = split_sentence(sentence, verb_chunks)
+        statements = construct_statement(split_clauses)
+        return_list += statements
+    return return_list

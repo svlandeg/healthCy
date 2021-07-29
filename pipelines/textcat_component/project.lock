@@ -1,0 +1,42 @@
+data:
+  cmd: python -m spacy run data
+  script:
+    - python scripts/parse_data.py assets/annotation.jsonl data/train.spacy data/dev.spacy
+      0.2
+  deps:
+    - path: assets/annotation.jsonl
+      md5: 879ed04a7f2db8e5285853dfe8c7f3fa
+    - path: scripts/parse_data.py
+      md5: a731c1595164f2f620431940c6b432cd
+  outs:
+    - path: data/train.spacy
+      md5: 63eb8df8d0387256ddb5470265b62438
+    - path: data/dev.spacy
+      md5: 515faefaa9509ac9fcf02c88e2b40b48
+  spacy_version: 3.1.0
+  spacy_git_version: 530b5d72f
+develop:
+  cmd: python -m spacy run develop
+  script:
+    - python scripts/develop.py ../ner_component/training/model-best training/configs/config_tok2vec/model-best
+  deps: []
+  outs: []
+  spacy_version: 3.1.0
+  spacy_git_version: 530b5d72f
+train:
+  cmd: python -m spacy run train
+  script:
+    - python -m spacy train configs/config_tok2vec.cfg --output training/configs/config_tok2vec/
+      --paths.train data/train.spacy --paths.dev data/dev.spacy --gpu-id 0 -c ./scripts/textcat_pipeline.py
+  deps:
+    - path: configs/config_tok2vec.cfg
+      md5: 633ca3515084d1dbd5cdf0a15495b572
+    - path: data/train.spacy
+      md5: 63eb8df8d0387256ddb5470265b62438
+    - path: data/dev.spacy
+      md5: 515faefaa9509ac9fcf02c88e2b40b48
+  outs:
+    - path: training/configs/config_tok2vec/model-best
+      md5: fc397740ef6384ad992af217a7b809a8
+  spacy_version: 3.1.0
+  spacy_git_version: 530b5d72f

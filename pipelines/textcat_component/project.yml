@@ -3,11 +3,11 @@ description: "This example project shows how to implement textcat."
 
 # Variables can be referenced across the project.yml using ${vars.var_name}
 vars:
-  config: "configs/config.cfg"
+  config: "config_tok2vec"
   annotation: "assets/annotation.jsonl"
   train: "data/train.spacy"
   dev: "data/dev.spacy"
-  trained_model: "training/model-best"
+  trained_model: "training/configs/config_tok2vec/model-best"
   gpu: 0
   eval_split : 0.2
 
@@ -47,13 +47,21 @@ commands:
   - name: "train"
     help: "Train the textcat"
     script:
-      - "python -m spacy train ${vars.config} --output training --paths.train ${vars.train} --paths.dev ${vars.dev} --gpu-id ${vars.gpu}"
+      - "python -m spacy train configs/${vars.config}.cfg --output training/${vars.config}/ --paths.train ${vars.train} --paths.dev ${vars.dev} --gpu-id ${vars.gpu} -c ./scripts/textcat_pipeline.py"
     deps:
-      - ${vars.config}
+      - configs/${vars.config}.cfg
       - ${vars.train}
       - ${vars.dev}
     outputs:
       - ${vars.trained_model}
+
+  - name: "develop"
+    help: "develop the textcat"
+    script:
+      - "python scripts/develop.py ../ner_component/training/model-best ${vars.trained_model}"
+
+
+  
   
 
 
