@@ -12,7 +12,7 @@ from pathlib import Path
 
 import json
 
-from statement_component import extract_clauses
+from custom_components import extract_clauses
 
 
 def main(ner_model: Path, output: Path, gpu: int):
@@ -43,7 +43,7 @@ def main(ner_model: Path, output: Path, gpu: int):
     nlp = spacy.load(ner_model)
     # nlp.add_pipe("benepar", config={"model": "benepar_en3"})
 
-    filter_keyword = ["worse", "caused", "diagnosed", "suffering"]
+    filter_keyword = []
 
     # Generate data
     review_sample = review_df.sample(n=10000)

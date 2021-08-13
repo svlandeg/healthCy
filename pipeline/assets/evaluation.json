@@ -1,0 +1,175 @@
+[
+    {
+        "text":"This product is great. I have asthma and this really helped me to breath better. I would recommend",
+        "number": 0,
+        "effect_summary":
+        {
+            "asthma": {"classification": "POSITIVE", "label": "CONDITION"},
+            "breath": {"classification": "POSITIVE", "label": "BENEFIT"}
+        }
+    },
+    {
+        "text":"This did nothing for my joint pain or my arthritis.",
+        "number": 1,
+        "effect_summary":
+        {
+            "joint_pain": {"classification": "NEUTRAL", "label": "CONDITION"},
+            "arthritis": {"classification": "NEUTRAL", "label": "CONDITION"}
+        }
+    },
+    {
+        "text":"After taking these, my anxiety and depression worsen and I got very nauseous!",
+        "number": 2,
+        "effect_summary":
+        {
+            "anxiety": {"classification": "NEGATIVE", "label": "CONDITION"},
+            "depression": {"classification": "NEGATIVE", "label": "CONDITION"},
+            "nauseous": {"classification": "NEGATIVE", "label": "CONDITION"}
+        }
+    },
+    {
+        "text":"I am diagnosed with diabetes type 2. I took this like prescribed and they worked wonders!",
+        "number": 3,
+        "effect_summary":
+        {
+            "diabetes_type_2": {"classification": "POSITIVE", "label": "CONDITION"}
+        }
+    },
+    {
+        "text":"Wow, I use it for my hair, skin and nails! They work great.",
+        "number": 4,
+        "effect_summary":
+        {
+            "hair": {"classification": "POSITIVE", "label": "BENEFIT"},
+            "skin": {"classification": "POSITIVE", "label": "BENEFIT"},
+            "nails": {"classification": "POSITIVE", "label": "BENEFIT"}
+        }
+    },
+    {
+        "text":"They helped my constipation barely but at least the improved my eye sight!",
+        "number": 5,
+        "effect_summary":
+        {
+            "constipation": {"classification": "NEUTRAL", "label": "CONDITION"},
+            "eye_sight": {"classification": "POSITIVE", "label": "BENEFIT"}
+        }
+    },
+    {
+        "text":"They did not help my PMS or my headaches",
+        "number": 6,
+        "effect_summary":
+        {
+            "pms": {"classification": "NEUTRAL", "label": "CONDITION"},
+            "headaches": {"classification": "NEUTRAL", "label": "CONDITION"}
+        }
+    },
+    {
+        "text":"They did not give me diarrhea or worsen my hair loss",
+        "number": 7,
+        "effect_summary":
+        {
+            "diarrhea": {"classification": "NEUTRAL", "label": "CONDITION"},
+            "hair_loss": {"classification": "NEUTRAL", "label": "CONDITION"}
+        }
+    },
+    {
+        "text":"This is super effective against corona virus and gives a huge amount of energy",
+        "number": 8,
+        "effect_summary":
+        {
+            "corona_virus": {"classification": "POSITIVE", "label": "CONDITION"},
+            "energy": {"classification": "POSITIVE", "label": "BENEFIT"}
+        }
+    },
+    {
+        "text":"My doctor recommended this for insomnia. Now I can sleep super great, thanks!",
+        "number": 9,
+        "effect_summary":
+        {
+            "insomnia": {"classification": "NEUTRAL", "label": "CONDITION"},
+            "sleep": {"classification": "POSITIVE", "label": "BENEFIT"}
+        }
+    },
+    {
+        "text":"My husband has suffered with 4 to 5 cramps at night.  After consultation with numerous doctors to no avail we decided to try this product.  One capful of solution actually calms the cramps in about 30 seconds.  Even rubbing the solution on the leg relieves the cramping",
+        "number": 10,
+        "effect_summary":
+        {
+            "cramps": {"classification": "POSITIVE", "label": "CONDITION"},
+            "cramping": {"classification": "POSITIVE", "label": "CONDITION"}
+        }
+    },
+    {
+        "text":"This increased mental clarity. This increased heartburn. This decreased alertness. This decreased fatigue",
+        "number": 11,
+        "effect_summary":
+        {
+            "mental_clarity": {"classification": "POSITIVE", "label": "BENEFIT"},
+            "heartburn": {"classification": "NEGATIVE", "label": "CONDITION"},
+            "alertness": {"classification": "NEGATIVE", "label": "BENEFIT"},
+            "fatigue": {"classification": "POSITIVE", "label": "CONDITION"}
+        }
+    },
+    {
+        "text":"My reflux symptoms did not disappear neither do I feel any improvement in my joint health",
+        "number": 12,
+        "effect_summary":
+        {
+            "reflux": {"classification": "NEUTRAL", "label": "CONDITION"},
+            "joint_health": {"classification": "NEUTRAL", "label": "BENEFIT"}
+        }
+    },
+    {
+        "text":"This caused my inflammation to be much more worse than before and have more allergies now",
+        "number": 13,
+        "effect_summary":
+        {
+            "inflammation": {"classification": "NEGATIVE", "label": "CONDITION"},
+            "allergies": {"classification": "NEGATIVE", "label": "CONDITION"}
+        }
+    },
+    {
+        "text":"What a waste. I am suffering from constipation for some month now. This supplement did nothing for it, it even made much more worse",
+        "number": 14,
+        "effect_summary":
+        {
+            "constipation": {"classification": "NEGATIVE", "label": "CONDITION"}
+        }
+    },
+    {
+        "text":"Caused more thyroid issues. Caused more stability muscle",
+        "number": 15,
+        "effect_summary":
+        {
+            "thyroid_issues": {"classification": "NEGATIVE", "label": "CONDITION"},
+            "stability_muscle": {"classification": "POSITIVE", "label": "BENEFIT"}
+        }
+    },
+    {
+        "text":"Seems to be doing its job of keeping our bones alright. Caused improved bowel movement",
+        "number": 16,
+        "effect_summary":
+        {
+            "bones": {"classification": "POSITIVE", "label": "BENEFIT"},
+            "bowel_movement": {"classification": "POSITIVE", "label": "BENEFIT"}
+        }
+    },
+    {
+        "text":"Very helpful for menopause heat waves. Good against infections",
+        "number": 17,
+        "effect_summary":
+        {
+            "menopause_heat_waves": {"classification": "POSITIVE", "label": "CONDITION"},
+            "infections": {"classification": "POSITIVE", "label": "CONDITION"}
+        }
+    },
+    {
+        "text":"These are super effective against bloating but not against nervousness.",
+        "number": 18,
+        "effect_summary":
+        {
+            "bloating": {"classification": "POSITIVE", "label": "CONDITION"},
+            "nervousness": {"classification": "NEUTRAL", "label": "CONDITION"}
+        }
+    }
+]

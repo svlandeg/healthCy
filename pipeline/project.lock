@@ -2,6 +2,7 @@ export_ner:
   cmd: python -m spacy run export_ner
   script:
     - python -m prodigy data-to-spacy data/ner/ -n ner_condition_benefit_2 -es 0.2
+    - python -m prodigy db-out ner_condition_benefit_2 assets/ner/
   deps: []
   outs: []
   spacy_version: 3.1.1
@@ -11,20 +12,18 @@ generate_ner:
   script:
     - python scripts/generate_ner_data.py data/ner/ner_annotation.json 1000
   deps: []
-  outs:
-    - path: assets/ner/ner_annotation.json
-      md5: null
+  outs: []
   spacy_version: 3.1.1
   spacy_git_version: ffaead8fe
 evaluate_ner:
   cmd: python -m spacy run evaluate_ner
   script:
-    - python -m spacy evaluate training/ner/config_trf/model-best data/ner/dev.spacy
+    - python -m spacy evaluate training/ner/config_tok2vec/model-best data/ner/dev.spacy
       --gpu-id 0
   deps: []
   outs: []
   spacy_version: 3.1.1
-  spacy_git_version: ffaead8fe
+  spacy_git_version: Unknown
 generate_textcat:
   cmd: python -m spacy run generate_textcat
   script:
@@ -38,6 +37,8 @@ export_textcat:
   cmd: python -m spacy run export_textcat
   script:
     - python -m prodigy db-out textcat_sentiment assets/textcat/
+    - python scripts/parse_textcat_data.py assets/textcat/textcat_sentiment.jsonl
+      data/textcat/train data/textcat/dev 0.2
   deps: []
   outs: []
   spacy_version: 3.1.1
@@ -54,26 +55,106 @@ convert_textcat:
 evaluate_textcat:
   cmd: python -m spacy run evaluate_textcat
   script:
-    - python -m spacy evaluate training/textcat/config_trf/model-best data/textcat/dev.spacy
+    - python -m spacy evaluate training/textcat/config_tok2vec/model-best data/textcat/dev.spacy
       --gpu-id 0
   deps: []
   outs: []
   spacy_version: 3.1.1
-  spacy_git_version: ffaead8fe
+  spacy_git_version: Unknown
 assemble:
   cmd: python -m spacy run assemble
   script:
-    - python -m spacy assemble configs/healthsea/config_trf.cfg training/healthsea
-      -c scripts/statement_component.py --paths.textcat_model training/textcat/config_trf/model-best
+    - python -m spacy assemble configs/healthsea/config_tok2vec.cfg training/healthsea/config_tok2vec/
+      -c scripts/custom_components.py --paths.textcat_model training/textcat/config_tok2vec/model-best
   deps: []
   outs: []
   spacy_version: 3.1.1
-  spacy_git_version: ffaead8fe
+  spacy_git_version: Unknown
 evaluate:
   cmd: python -m spacy run evaluate
   script:
-    - python scripts/eval.py training/healthsea
+    - python scripts/end_to_end_evaluation.py training/healthsea/config_tok2vec/ assets/evaluation.json
+      assets/ner/ner_condition_benefit_2.jsonl assets/textcat/textcat_sentiment.jsonl
   deps: []
   outs: []
   spacy_version: 3.1.1
-  spacy_git_version: ffaead8fe
+  spacy_git_version: Unknown
+train_textcat:
+  cmd: python -m spacy run train_textcat
+  script:
+    - python -m spacy train configs/textcat/config_tok2vec.cfg --output training/textcat/config_tok2vec/
+      --paths.ner_model training/ner/config_tok2vec/model-best  --paths.train data/textcat/train.spacy
+      --paths.dev data/textcat/dev.spacy --paths.init_tok2vec training/pretrain/model15.bin
+      --gpu-id 0
+  deps:
+    - path: configs/textcat/config_tok2vec.cfg
+      md5: bec397c5636c14596b3d15ebcf396ffb
+    - path: training/ner/config_tok2vec/model-best
+      md5: cc6e335d75ae93db7b213d856ae5c40e
+    - path: data/textcat/train.spacy
+      md5: 63eb8df8d0387256ddb5470265b62438
+    - path: data/textcat/dev.spacy
+      md5: 515faefaa9509ac9fcf02c88e2b40b48
+  outs:
+    - path: training/textcat/config_tok2vec/model-best
+      md5: d5b01d4cc55fdad346f236e383338d72
+    - path: training/textcat/config_tok2vec/model-last
+      md5: d5b01d4cc55fdad346f236e383338d72
+  spacy_version: 3.1.1
+  spacy_git_version: Unknown
+train_ner:
+  cmd: python -m spacy run train_ner
+  script:
+    - python -m spacy train configs/ner/config_tok2vec.cfg --output training/ner/config_tok2vec/
+      --paths.train data/ner/train.spacy --paths.dev data/ner/dev.spacy --paths.init_tok2vec
+      training/pretrain/model15.bin --gpu-id 0
+  deps:
+    - path: configs/ner/config_tok2vec.cfg
+      md5: 91a782055e71d82acf742b4276b58755
+    - path: data/ner/train.spacy
+      md5: 7218a1a71cbcc8299894da0ee2564083
+    - path: data/ner/dev.spacy
+      md5: e9f5e003d6b7d91431d6391919b41cf0
+  outs:
+    - path: training/ner/config_tok2vec/model-best
+      md5: cc6e335d75ae93db7b213d856ae5c40e
+    - path: training/ner/config_tok2vec/model-last
+      md5: 89df5a10d6800928b55095dd63cbaf77
+  spacy_version: 3.1.1
+  spacy_git_version: Unknown
+generate_pretrain:
+  cmd: python -m spacy run generate_pretrain
+  script:
+    - python scripts/generate_pretrain_data.py data/pretrain/reviews.jsonl
+  deps: []
+  outs: []
+  spacy_version: 3.1.1
+  spacy_git_version: Unknown
+train_pretrain:
+  cmd: python -m spacy run train_pretrain
+  script:
+    - python -m spacy pretrain configs/pretrain/config.cfg training/pretrain/ --paths.raw_text
+      data/pretrain/reviews.jsonl --gpu-id 0
+  deps: []
+  outs: []
+  spacy_version: 3.1.1
+  spacy_git_version: Unknown
+train_ner_tmp:
+  cmd: python -m spacy run train_ner_tmp
+  script:
+    - python -m spacy train configs/ner/config_tok2vec.cfg --output training/ner/config_tok2vec/
+      --paths.train data/ner/train.spacy --paths.dev data/ner/dev.spacy --gpu-id 0
+  deps:
+    - path: configs/ner/config_tok2vec.cfg
+      md5: 46a33ca725ab444e0b5d1ea20ca90ce8
+    - path: data/ner/train.spacy
+      md5: 7218a1a71cbcc8299894da0ee2564083
+    - path: data/ner/dev.spacy
+      md5: e9f5e003d6b7d91431d6391919b41cf0
+  outs:
+    - path: training/ner/config_tok2vec/model-best
+      md5: 9a038c3f0fc308b432348c0995ceddac
+    - path: training/ner/config_tok2vec/model-last
+      md5: c4215909bca05db041f495601e0f4be2
+  spacy_version: 3.1.1
+  spacy_git_version: Unknown

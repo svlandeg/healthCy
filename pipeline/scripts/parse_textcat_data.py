@@ -65,7 +65,7 @@ def main(
         dev += label_dict[label][:split]
 
         msg.info(
-            f"{label}: {len(label_dict[label])} ({len(label_dict[label])/len(example):.2f}%) | Train: {len(label_dict[label][split:])} Dev: {len(label_dict[label][:split])})"
+            f"{label}: {len(label_dict[label])} ({(len(label_dict[label])/len(examples))*100:.2f}%) | Train: {len(label_dict[label][split:])} Dev: {len(label_dict[label][:split])})"
         )
 
     docbin = DocBin(docs=train, store_user_data=True)

@@ -5,7 +5,7 @@ vars:
   version: "0.0.0"
 
   name: "healthsea"
-  config: "config_trf"
+  config: "config_tok2vec"
   train: "train"
   dev: "dev"
 
@@ -18,7 +18,7 @@ vars:
     model_textcat: "training/textcat/${vars.config}/model-best"
 
   gpu_id: 0
-  eval_split: 0.2
+  eval_split: 0.25
 
 # These are the directories that the project needs. The project CLI will make
 # sure that they always exist.
@@ -50,12 +50,20 @@ commands:
       - "python -m spacy download en_core_web_trf"
       - "python -m spacy download en_core_web_lg"
 
+  - name: "generate_pretrain"
+    help: "Generate data for pretraining"
+    script:
+      - "python scripts/generate_pretrain_data.py data/pretrain/reviews.jsonl"
+
+  - name: "train_pretrain"
+    help: "Pretraining"
+    script:
+      - "python -m spacy pretrain configs/pretrain/config.cfg training/pretrain/ --paths.raw_text data/pretrain/reviews.jsonl --gpu-id ${vars.gpu_id}"
+
   - name: "generate_ner"
     help: "Generate data for NER annotation"
     script:
       - "python scripts/generate_ner_data.py data/ner/ner_annotation.json 1000"
-    outputs:
-      - "assets/ner/ner_annotation.json"
 
   - name: "annotate_manual_ner"
     help: "Manually annotate data for NER training"
@@ -71,11 +79,12 @@ commands:
     help: "Export NER datasets from prodigy and convert to .spacy format"
     script:
       - "python -m prodigy data-to-spacy data/ner/ -n ${vars.prodigy.database_ner} -es ${vars.eval_split}"
+      - "python -m prodigy db-out ${vars.prodigy.database_ner} assets/ner/"
 
   - name: "train_ner"
     help: "Train NER"
     script:
-      - "python -m spacy train configs/ner/${vars.config}.cfg --output training/ner/${vars.config}/ --paths.train data/ner/${vars.train}.spacy --paths.dev data/ner/${vars.dev}.spacy --gpu-id ${vars.gpu_id}"
+      - "python -m spacy train configs/ner/${vars.config}.cfg --output training/ner/${vars.config}/ --paths.train data/ner/${vars.train}.spacy --paths.dev data/ner/${vars.dev}.spacy --paths.init_tok2vec training/pretrain/model15.bin --gpu-id ${vars.gpu_id}"
     deps:
       - "configs/ner/${vars.config}.cfg"
       - "data/ner/${vars.train}.spacy"
@@ -108,16 +117,12 @@ commands:
     help: "Export Textcat datasets from prodigy"
     script:
       - "python -m prodigy db-out ${vars.prodigy.database_textcat} assets/textcat/"
-
-  - name: "convert_textcat"
-    help: "Convert exported Textcat dataset to .spacy format"
-    script:
       - "python scripts/parse_textcat_data.py assets/textcat/${vars.prodigy.database_textcat}.jsonl data/textcat/${vars.train} data/textcat/${vars.dev} ${vars.eval_split}"
 
   - name: "train_textcat"
     help: "Train Textcat"
     script:
-      - "python -m spacy train configs/textcat/${vars.config}.cfg --output training/textcat/${vars.config}/ --paths.ner_model ${vars.models.model_ner}  --paths.train data/textcat/${vars.train}.spacy --paths.dev data/textcat/${vars.dev}.spacy --gpu-id ${vars.gpu_id}"
+      - "python -m spacy train configs/textcat/${vars.config}.cfg --output training/textcat/${vars.config}/ --paths.ner_model ${vars.models.model_ner}  --paths.train data/textcat/${vars.train}.spacy --paths.dev data/textcat/${vars.dev}.spacy --paths.init_tok2vec training/pretrain/model15.bin --gpu-id ${vars.gpu_id}"
     deps:
       - "configs/textcat/${vars.config}.cfg"
       - ${vars.models.model_ner}
@@ -135,9 +140,9 @@ commands:
   - name: "assemble"
     help: "Assemble pipelines to healthsea model"
     script:
-      - "python -m spacy assemble configs/healthsea/${vars.config}.cfg training/healthsea -c scripts/statement_component.py --paths.textcat_model ${vars.models.model_textcat}"
+      - "python -m spacy assemble configs/healthsea/${vars.config}.cfg training/healthsea/${vars.config}/ -c scripts/custom_components.py --paths.textcat_model ${vars.models.model_textcat}"
 
   - name: "evaluate"
     help: "Evaluate healthsea"
     script:
-      - "python scripts/eval.py training/healthsea"
+      - "python scripts/end_to_end_evaluation.py training/healthsea/${vars.config}/ assets/evaluation.json assets/ner/${vars.prodigy.database_ner}.jsonl assets/textcat/${vars.prodigy.database_textcat}.jsonl"
