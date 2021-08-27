@@ -232,4 +232,4 @@ def test(model: Path):
 
 
 if __name__ == "__main__":
-    typer.run(test)
+    typer.run(main)

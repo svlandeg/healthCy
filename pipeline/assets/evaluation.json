@@ -46,7 +46,7 @@
         }
     },
     {
-        "text":"They helped my constipation barely but at least the improved my eye sight!",
+        "text":"They helped my constipation barely but at least it improved my eye sight!",
         "number": 5,
         "effect_summary":
         {
@@ -111,7 +111,7 @@
         }
     },
     {
-        "text":"My reflux symptoms did not disappear neither do I feel any improvement in my joint health",
+        "text":"My reflux symptoms did not disappear and I also don't feel any improvement in my joint health",
         "number": 12,
         "effect_summary":
         {
@@ -170,6 +170,91 @@
         {
             "bloating": {"classification": "POSITIVE", "label": "CONDITION"},
             "nervousness": {"classification": "NEUTRAL", "label": "CONDITION"}
+        }
+    },
+    {
+        "text":"I have taken other iron supplements in the past, and had to quit after getting diahrrea (I suffer from Irritable bowel syndrome). These work great, I have no side effects.",
+        "number": 19,
+        "effect_summary":
+        {
+            "diahrrea": {"classification": "POSITIVE", "label": "CONDITION"},
+            "irritable_bowel_syndrome": {"classification": "POSITIVE", "label": "CONDITION"}
+        }
+    },
+    {
+        "text":"This gives me headache and tight back muscles. I seem to have less issues with my allergies and I don't get sick as often.",
+        "number": 20,
+        "effect_summary":
+        {
+            "headache": {"classification": "NEGATIVE", "label": "CONDITION"},
+            "tight_back_muscles": {"classification": "NEGATIVE", "label": "CONDITION"},
+            "allergies": {"classification": "POSITIVE", "label": "CONDITION"}
+        }
+    },
+    {
+        "text":"This is slowly helping restore hearing loss caused by fluid in the wear. I think it decreased my prolactin level, I'm satisfied.",
+        "number": 21,
+        "effect_summary":
+        {
+            "hearing_loss": {"classification": "POSITIVE", "label": "CONDITION"},
+            "prolactin_level": {"classification": "POSITIVE", "label": "CONDITION"}
+        }
+    },
+    {
+        "text":"Works well for reducing burning sensation in my stomach. It helps to maintain proper estrogen level. This item has so far helped clear up my hormonal acne.",
+        "number": 22,
+        "effect_summary":
+        {
+            "burning_sensation": {"classification": "POSITIVE", "label": "CONDITION"},
+            "estrogen_level": {"classification": "POSITIVE", "label": "CONDITION"},
+            "hormonal_acne": {"classification": "POSITIVE", "label": "CONDITION"}
+        }
+    },
+    {
+        "text":"It is the first time I don't have GI issues using zinc. My mother who use this CoQ10 said this merchandise enchancement his heart function.",
+        "number": 23,
+        "effect_summary":
+        {
+            "gi_issues": {"classification": "POSITIVE", "label": "CONDITION"},
+            "heart_function": {"classification": "POSITIVE", "label": "BENEFIT"}
+        }
+    },
+    {
+        "text":"I use it when feel that I have caught cold and it helps to reduce the symptoms. Really works in lowering uric acid level for me after taking it regularly",
+        "number": 24,
+        "effect_summary":
+        {
+            "cold": {"classification": "POSITIVE", "label": "CONDITION"},
+            "uric_acid_level": {"classification": "POSITIVE", "label": "CONDITION"}
+        }
+    },
+    {
+        "text":"I was looking forward to its effect but it gave me insomnia, gave the rest of the bottle to my sister it actually helped her sleep better and stabilised her mood so I think it really depends on how your body will react to it.",
+        "number": 25,
+        "effect_summary":
+        {
+            "insomnia": {"classification": "NEGATIVE", "label": "CONDITION"},
+            "sleep": {"classification": "POSITIVE", "label": "BENEFIT"},
+            "mood": {"classification": "POSITIVE", "label": "BENEFIT"}
+        }
+    },
+    {
+        "text":"I bought it because I’ve PCOS and thought it’d help me for that and also help me losing weight. Unfortunately I can’t say I have seen anything about that. However it’s doing great for my digestion",
+        "number": 26,
+        "effect_summary":
+        {
+            "pcos": {"classification": "NEUTRAL", "label": "CONDITION"},
+            "weight": {"classification": "NEUTRAL", "label": "BENEFIT"},
+            "digestion": {"classification": "POSITIVE", "label": "BENEFIT"}
+        }
+    },
+    {
+        "text":"Really helps blood coagulation due to chronic infections- I felt a difference right away.",
+        "number": 27,
+        "effect_summary":
+        {
+            "blood_coagulation": {"classification": "POSITIVE", "label": "CONDITION"},
+            "chronic_infections": {"classification": "POSITIVE", "label": "CONDITION"}
         }
     }
 ]

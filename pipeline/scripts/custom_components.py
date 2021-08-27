@@ -3,6 +3,7 @@ from spacy.tokens import Span, Doc, Token
 from spacy.language import Language
 from typing import Tuple, List
 import operator
+import benepar
 
 
 @Language.factory("statement_classification", default_config={})
@@ -18,8 +19,10 @@ class Statementclassification:
 
         if self.nlp.has_pipe("transformer_textcat"):
             tok2vec = self.nlp.get_pipe("transformer_textcat")
-        else:
+
+        elif self.nlp.has_pipe("tok2vec_textcat"):
             tok2vec = self.nlp.get_pipe("tok2vec_textcat")
+
         textcat = self.nlp.get_pipe("textcat")
 
         # Clause Segmentation
@@ -28,6 +31,7 @@ class Statementclassification:
         for statement in statements:
             classification_doc = textcat(tok2vec(statement[0]))
             classification = classification_doc.cats
+
             statements_list.append(
                 (statement[0], statement[1], classification, statement[2])
             )
@@ -145,7 +149,7 @@ def split_sentence(sentence: Span, verb_chunks: List[List[Token]]) -> List[Span]
     split_sentences = []
     sentence_boundaries = [sentence[0].i, sentence[-1].i]
 
-    if len(verb_chunks) > 1:
+    if len(verb_chunks) <= 1:
         return [sentence]
 
     for i in range(0, len(verb_chunks) - 1):
@@ -173,8 +177,17 @@ def split_sentence(sentence: Span, verb_chunks: List[List[Token]]) -> List[Span]
     return split_sentences
 
 
-def construct_statement(clauses: Span) -> List[Tuple[Doc, List[Span]]]:
+def split_sentence_berkely(sentence: Span) -> List[Span]:
+    split_sentences = []
+    for constituent in sentence._.constituents:
+        if "S" in constituent._.labels and constituent._.parent == sentence:
+            split_sentences.append(constituent)
+    if len(split_sentences) == 0:
+        split_sentences.append(sentence)
+    return split_sentences
 
+
+def construct_statement(clauses: List[Span]) -> List[Tuple[Doc, List[Span]]]:
     statement_list = []
     for clause in clauses:
         if len(clause.ents) > 0:
@@ -209,7 +222,40 @@ def extract_clauses(doc: Doc) -> List[Tuple[Doc, Span]]:
     return_list = []
     for sentence in doc.sents:
         verb_chunks = get_verb_chunk(sentence)
-        split_clauses = split_sentence(sentence, verb_chunks)
+        # split_clauses = split_sentence(sentence, verb_chunks)
+        split_clauses = split_sentence_berkely(sentence)
         statements = construct_statement(split_clauses)
         return_list += statements
     return return_list
+
+
+if __name__ == "__main__":
+
+    import benepar, spacy
+
+    spacy.prefer_gpu()
+
+    nlp = spacy.load("en_core_web_trf")
+    nlp.add_pipe("benepar", config={"model": "benepar_en3"})
+
+    doc = nlp(
+        "It a very good rub , the smell is just perfect , i like to mix it with some essential oils and rub the chest or the feet of my kids when they take a cold."
+    )
+
+    split_sentences = []
+    for sentence in doc.sents:
+        split_sentences = []
+        for constituent in sentence._.constituents:
+            if "S" in constituent._.labels and constituent._.parent == sentence:
+                split_sentences.append(constituent)
+        if len(split_sentences) == 0:
+            split_sentences.append(sentence)
+    print(len(split_sentences), split_sentences)
+    print()
+
+    # spacy.prefer_gpu()
+    # nlp = spacy.load("../training/healthsea/config_trf")
+    # doc = nlp(
+    #    "They helped my constipation barely but at least the improved my eye sight!"
+    # )
+    # print(doc._.statements)

@@ -5,7 +5,7 @@ vars:
   version: "0.0.0"
 
   name: "healthsea"
-  config: "config_tok2vec"
+  config: "config_trf"
   train: "train"
   dev: "dev"
 
@@ -96,7 +96,12 @@ commands:
   - name: "evaluate_ner"
     help: "Evaluate NER"
     script:
-      - "python -m spacy evaluate ${vars.models.model_ner} data/ner/${vars.dev}.spacy --gpu-id ${vars.gpu_id}"
+      - "python -m spacy evaluate ${vars.models.model_ner} data/ner/${vars.dev}.spacy -c scripts/custom_components.py --gpu-id ${vars.gpu_id}"
+
+  - name: "package_ner"
+    help: "Package NER"
+    script:
+      - "python -m spacy package ${vars.models.model_ner} package/ner/${vars.config}/ -f -n healthsea_ner -c scripts/custom_components.py"
 
   - name: "generate_textcat"
     help: "Generate data for Textcat annotation"
@@ -117,32 +122,78 @@ commands:
     help: "Export Textcat datasets from prodigy"
     script:
       - "python -m prodigy db-out ${vars.prodigy.database_textcat} assets/textcat/"
-      - "python scripts/parse_textcat_data.py assets/textcat/${vars.prodigy.database_textcat}.jsonl data/textcat/${vars.train} data/textcat/${vars.dev} ${vars.eval_split}"
+      - "python scripts/parse_textcat_data.py assets/textcat/${vars.prodigy.database_textcat}.jsonl data/textcat/${vars.train}.spacy data/textcat/${vars.dev}.spacy ${vars.eval_split}"
 
   - name: "train_textcat"
     help: "Train Textcat"
     script:
-      - "python -m spacy train configs/textcat/${vars.config}.cfg --output training/textcat/${vars.config}/ --paths.ner_model ${vars.models.model_ner}  --paths.train data/textcat/${vars.train}.spacy --paths.dev data/textcat/${vars.dev}.spacy --paths.init_tok2vec training/pretrain/model15.bin --gpu-id ${vars.gpu_id}"
-    deps:
-      - "configs/textcat/${vars.config}.cfg"
-      - ${vars.models.model_ner}
-      - "data/textcat/${vars.train}.spacy"
-      - "data/textcat/${vars.dev}.spacy"
-    outputs:
-      - ${vars.models.model_textcat}
-      - "training/textcat/${vars.config}/model-last"
+      - "python -m spacy train configs/textcat/${vars.config}.cfg --output training/textcat/${vars.config}/ -c scripts/custom_components.py --paths.ner_model ${vars.models.model_ner}  --paths.train data/textcat/${vars.train}.spacy --paths.dev data/textcat/${vars.dev}.spacy --paths.init_tok2vec training/pretrain/model15.bin --gpu-id ${vars.gpu_id}"
 
   - name: "evaluate_textcat"
     help: "Evaluate Textcat"
     script:
-      - "python -m spacy evaluate ${vars.models.model_textcat} data/textcat/${vars.dev}.spacy --gpu-id ${vars.gpu_id}"
+      - "python -m spacy evaluate ${vars.models.model_textcat} data/textcat/${vars.dev}.spacy --gpu-id ${vars.gpu_id} -c scripts/custom_components.py"
 
   - name: "assemble"
     help: "Assemble pipelines to healthsea model"
     script:
       - "python -m spacy assemble configs/healthsea/${vars.config}.cfg training/healthsea/${vars.config}/ -c scripts/custom_components.py --paths.textcat_model ${vars.models.model_textcat}"
 
-  - name: "evaluate"
-    help: "Evaluate healthsea"
+  - name: "assemble_tok2vec"
+    help: "Build one component pipeline with only tok2vec with pretrained weights"
     script:
-      - "python scripts/end_to_end_evaluation.py training/healthsea/${vars.config}/ assets/evaluation.json assets/ner/${vars.prodigy.database_ner}.jsonl assets/textcat/${vars.prodigy.database_textcat}.jsonl"
+      - "python -m spacy assemble configs/pretrain/config.cfg training/healthsea/tok2vec/ --paths.init_tok2vec training/pretrain/model15.bin"
+
+  - name: "analyse"
+    help: "Analyse reviews with healthsea pipeline"
+    script:
+      - "python scripts/analyze_reviews.py training/healthsea/${vars.config}/ data/healthsea/analyzed_reviews.json ${vars.gpu_id} 100"
+
+  - name: "process"
+    help: "Process analyzed reviews"
+    script:
+      - "python scripts/process_reviews.py data/healthsea/analyzed_reviews.json data/healthsea/customer/trustfactor.json data/healthsea/scored_reviews.json"
+
+
+  - name: "create_product"
+    help: "Create product lookup dict"
+    script:
+      - "python scripts/product/lookup_product.py data/healthsea/products.json"
+
+
+  - name: "group_customer"
+    help: "Group reviews to customers"
+    script:
+      - "python scripts/user_normalization/group_customers.py data/healthsea/customer/grouped_dataset.json"
+
+  - name: "trustfactor"
+    help: "Calculate trustfactor per customer"
+    script:
+      - "python scripts/user_normalization/calculate_trustfactor.py data/healthsea/customer/grouped_dataset.json data/healthsea/products.json data/healthsea/customer/trustfactor.json"
+
+  - name: "calculate_vectors"
+    help: "Calculate vectors of condition and benefits"
+    script:
+      - "python scripts/vectors/calculate_vectors.py data/healthsea/scored_reviews.json training/healthsea/tok2vec/ data/pretrain/condition_vectors.json data/pretrain/benefit_vectors.json ${vars.gpu_id}"
+
+  - name: "cluster_vectors"
+    help: "Cluster entities based on similarity"
+    script:
+      - "python scripts/vectors/cluster_vectors.py data/healthsea/scored_reviews.json data/pretrain/condition_vectors.json data/pretrain/benefit_vectors.json data/healthsea/scored_clustered_reviews.json 0.95 1000"
+
+  - name: "group_reviews"
+    help: "Group review to their products and calculate relevance score"
+    script:
+      - "python scripts/grouping/group_reviews.py data/healthsea/scored_clustered_reviews.json data/healthsea/products.json data/healthsea/substances_per_product.json data/healthsea/healthsea_products.json data/healthsea/healthsea_substance.json"
+
+  - name: "group_conditions"
+    help: "Group conditions and sort by highest relevance_score"
+    script:
+      - "python scripts/grouping/group_condition.py data/healthsea/healthsea_products.json data/healthsea/healthsea_substance.json data/healthsea/healthsea_condition.json"
+
+  - name: "visualize_healthsea"
+    help: "Visualize healthsea in Streamlit"
+    script:
+      - "streamlit run scripts/presentation/healthsea_streamlit.py "
+
+    

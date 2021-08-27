@@ -2,9 +2,10 @@ from typing import Tuple
 from numpy.core.fromnumeric import sort
 import typer
 from pathlib import Path
-import pyodbc
 import pandas as pd
 import spacy
+
+import time
 
 import numpy as np
 from numpy import dot
@@ -22,10 +23,8 @@ msg = Printer()
 def main(
     review_path: Path,
     tok2vec_path: Path,
-    output_condition: Path,
-    output_benefit: Path,
-    output: Path,
-    threshold: float,
+    condition_output: Path,
+    benefit_output: Path,
     gpu: int,
 ):
 
@@ -64,7 +63,7 @@ def main(
                     for i in range(1, len(doc)):
                         vector += doc[i].tensor
                     vector = vector / len(doc)
-                    condition_dict[c_key]["vector"]
+                    condition_dict[c_key]["vector"] = vector.tolist()
 
                 condition_dict[c_key]["frequency"] += 1
 
@@ -85,39 +84,17 @@ def main(
                     for i in range(1, len(doc)):
                         vector += doc[i].tensor
                     vector = vector / len(doc)
-                    benefit_dict[c_key]["vector"]
+                    benefit_dict[c_key]["vector"] = vector.tolist()
 
                 benefit_dict[c_key]["frequency"] += 1
 
-    condition_dict = cluster_entities(threshold, condition_dict)
-    benefit_dict = cluster_entities(threshold, benefit_dict)
-
-    with open(output_condition, "w", encoding="utf-8") as writer:
+    with open(condition_output, "w", encoding="utf-8") as writer:
         json.dump(condition_dict, writer)
 
-    with open(output_benefit, "w", encoding="utf-8") as writer:
+    with open(benefit_output, "w", encoding="utf-8") as writer:
         json.dump(benefit_dict, writer)
 
-
-def cluster_entities(threshold, dataset):
-
-    values = list(dataset.values())
-
-    for i in range(len(values)):
-        current_key = values[i]["key"]
-        current_vector = np.array(values[i]["vector"])
-        for k in range(i + 1, len(values)):
-            second_key = values[k]["key"]
-            second_vector = np.array(values[k]["vector"])
-            cos_sim = dot(current_vector, second_vector) / (
-                norm(current_vector) * norm(second_vector)
-            )
-
-            if cos_sim >= threshold:
-                dataset[current_key]["alias"].append(second_key)
-                dataset[second_key]["alias"].append(current_key)
-
-    return dataset
+    msg.info(f"Calculated and saved vectors")
 
 
 if __name__ == "__main__":

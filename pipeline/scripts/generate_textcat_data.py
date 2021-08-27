@@ -41,7 +41,7 @@ def main(ner_model: Path, output: Path, gpu: int):
         spacy.prefer_gpu()
 
     nlp = spacy.load(ner_model)
-    # nlp.add_pipe("benepar", config={"model": "benepar_en3"})
+    nlp.add_pipe("benepar", config={"model": "benepar_en3"})
 
     filter_keyword = []
 

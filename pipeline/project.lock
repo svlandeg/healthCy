@@ -1,12 +1,12 @@
 export_ner:
   cmd: python -m spacy run export_ner
   script:
-    - python -m prodigy data-to-spacy data/ner/ -n ner_condition_benefit_2 -es 0.2
+    - python -m prodigy data-to-spacy data/ner/ -n ner_condition_benefit_2 -es 0.25
     - python -m prodigy db-out ner_condition_benefit_2 assets/ner/
   deps: []
   outs: []
   spacy_version: 3.1.1
-  spacy_git_version: ffaead8fe
+  spacy_git_version: Unknown
 generate_ner:
   cmd: python -m spacy run generate_ner
   script:
@@ -14,12 +14,12 @@ generate_ner:
   deps: []
   outs: []
   spacy_version: 3.1.1
-  spacy_git_version: ffaead8fe
+  spacy_git_version: Unknown
 evaluate_ner:
   cmd: python -m spacy run evaluate_ner
   script:
-    - python -m spacy evaluate training/ner/config_tok2vec/model-best data/ner/dev.spacy
-      --gpu-id 0
+    - python -m spacy evaluate training/ner/config_trf/model-best data/ner/dev.spacy
+      -c scripts/custom_components.py --gpu-id 0
   deps: []
   outs: []
   spacy_version: 3.1.1
@@ -32,17 +32,17 @@ generate_textcat:
   deps: []
   outs: []
   spacy_version: 3.1.1
-  spacy_git_version: ffaead8fe
+  spacy_git_version: Unknown
 export_textcat:
   cmd: python -m spacy run export_textcat
   script:
     - python -m prodigy db-out textcat_sentiment assets/textcat/
     - python scripts/parse_textcat_data.py assets/textcat/textcat_sentiment.jsonl
-      data/textcat/train data/textcat/dev 0.2
+      data/textcat/train.spacy data/textcat/dev.spacy 0.25
   deps: []
   outs: []
   spacy_version: 3.1.1
-  spacy_git_version: ffaead8fe
+  spacy_git_version: Unknown
 convert_textcat:
   cmd: python -m spacy run convert_textcat
   script:
@@ -55,8 +55,8 @@ convert_textcat:
 evaluate_textcat:
   cmd: python -m spacy run evaluate_textcat
   script:
-    - python -m spacy evaluate training/textcat/config_tok2vec/model-best data/textcat/dev.spacy
-      --gpu-id 0
+    - python -m spacy evaluate training/textcat/config_trf/model-best data/textcat/dev.spacy
+      --gpu-id 0 -c scripts/custom_components.py
   deps: []
   outs: []
   spacy_version: 3.1.1
@@ -64,8 +64,8 @@ evaluate_textcat:
 assemble:
   cmd: python -m spacy run assemble
   script:
-    - python -m spacy assemble configs/healthsea/config_tok2vec.cfg training/healthsea/config_tok2vec/
-      -c scripts/custom_components.py --paths.textcat_model training/textcat/config_tok2vec/model-best
+    - python -m spacy assemble configs/healthsea/config_trf.cfg training/healthsea/config_trf/
+      -c scripts/custom_components.py --paths.textcat_model training/textcat/config_trf/model-best
   deps: []
   outs: []
   spacy_version: 3.1.1
@@ -73,7 +73,7 @@ assemble:
 evaluate:
   cmd: python -m spacy run evaluate
   script:
-    - python scripts/end_to_end_evaluation.py training/healthsea/config_tok2vec/ assets/evaluation.json
+    - python scripts/end_to_end_evaluation.py training/healthsea/config_trf/ assets/evaluation.json
       assets/ner/ner_condition_benefit_2.jsonl assets/textcat/textcat_sentiment.jsonl
   deps: []
   outs: []
@@ -82,44 +82,32 @@ evaluate:
 train_textcat:
   cmd: python -m spacy run train_textcat
   script:
-    - python -m spacy train configs/textcat/config_tok2vec.cfg --output training/textcat/config_tok2vec/
-      --paths.ner_model training/ner/config_tok2vec/model-best  --paths.train data/textcat/train.spacy
-      --paths.dev data/textcat/dev.spacy --paths.init_tok2vec training/pretrain/model15.bin
-      --gpu-id 0
-  deps:
-    - path: configs/textcat/config_tok2vec.cfg
-      md5: bec397c5636c14596b3d15ebcf396ffb
-    - path: training/ner/config_tok2vec/model-best
-      md5: cc6e335d75ae93db7b213d856ae5c40e
-    - path: data/textcat/train.spacy
-      md5: 63eb8df8d0387256ddb5470265b62438
-    - path: data/textcat/dev.spacy
-      md5: 515faefaa9509ac9fcf02c88e2b40b48
-  outs:
-    - path: training/textcat/config_tok2vec/model-best
-      md5: d5b01d4cc55fdad346f236e383338d72
-    - path: training/textcat/config_tok2vec/model-last
-      md5: d5b01d4cc55fdad346f236e383338d72
+    - python -m spacy train configs/textcat/config_trf.cfg --output training/textcat/config_trf/
+      -c scripts/custom_components.py --paths.ner_model training/ner/config_trf/model-best  --paths.train
+      data/textcat/train.spacy --paths.dev data/textcat/dev.spacy --paths.init_tok2vec
+      training/pretrain/model15.bin --gpu-id 0
+  deps: []
+  outs: []
   spacy_version: 3.1.1
   spacy_git_version: Unknown
 train_ner:
   cmd: python -m spacy run train_ner
   script:
-    - python -m spacy train configs/ner/config_tok2vec.cfg --output training/ner/config_tok2vec/
+    - python -m spacy train configs/ner/config_trf.cfg --output training/ner/config_trf/
       --paths.train data/ner/train.spacy --paths.dev data/ner/dev.spacy --paths.init_tok2vec
       training/pretrain/model15.bin --gpu-id 0
   deps:
-    - path: configs/ner/config_tok2vec.cfg
-      md5: 91a782055e71d82acf742b4276b58755
+    - path: configs/ner/config_trf.cfg
+      md5: 91f88c5c3edda3a42f173db30c376a76
     - path: data/ner/train.spacy
-      md5: 7218a1a71cbcc8299894da0ee2564083
+      md5: 599f513ab5a649b029d73614e4f03f0f
     - path: data/ner/dev.spacy
-      md5: e9f5e003d6b7d91431d6391919b41cf0
+      md5: 5b91a962b4839dedc9c99265b791bdd0
   outs:
-    - path: training/ner/config_tok2vec/model-best
-      md5: cc6e335d75ae93db7b213d856ae5c40e
-    - path: training/ner/config_tok2vec/model-last
-      md5: 89df5a10d6800928b55095dd63cbaf77
+    - path: training/ner/config_trf/model-best
+      md5: 856087496678bb8302b69c1e035f712d
+    - path: training/ner/config_trf/model-last
+      md5: fd1b618ef33d6448b03ba7f59324e293
   spacy_version: 3.1.1
   spacy_git_version: Unknown
 generate_pretrain:
@@ -156,5 +144,114 @@ train_ner_tmp:
       md5: 9a038c3f0fc308b432348c0995ceddac
     - path: training/ner/config_tok2vec/model-last
       md5: c4215909bca05db041f495601e0f4be2
+  spacy_version: 3.1.1
+  spacy_git_version: Unknown
+package_ner:
+  cmd: python -m spacy run package_ner
+  script:
+    - python -m spacy package training/ner/config_trf/model-best package/ner/config_trf/
+      -f -n healthsea_ner -c scripts/custom_components.py
+  deps: []
+  outs: []
+  spacy_version: 3.1.1
+  spacy_git_version: Unknown
+process:
+  cmd: python -m spacy run process
+  script:
+    - python scripts/process_reviews.py data/healthsea/analyzed_reviews.json data/healthsea/customer/trustfactor.json
+      data/healthsea/scored_reviews.json
+  deps: []
+  outs: []
+  spacy_version: 3.1.1
+  spacy_git_version: Unknown
+group_customer:
+  cmd: python -m spacy run group_customer
+  script:
+    - python scripts/user_normalization/group_customers.py data/healthsea/customer/grouped_dataset.json
+  deps: []
+  outs: []
+  spacy_version: 3.1.1
+  spacy_git_version: Unknown
+trustfactor:
+  cmd: python -m spacy run trustfactor
+  script:
+    - python scripts/user_normalization/calculate_trustfactor.py data/healthsea/customer/grouped_dataset.json
+      data/healthsea/products.json data/healthsea/customer/trustfactor.json
+  deps: []
+  outs: []
+  spacy_version: 3.1.1
+  spacy_git_version: Unknown
+create_product:
+  cmd: python -m spacy run create_product
+  script:
+    - python scripts/product/lookup_product.py data/healthsea/products.json
+  deps: []
+  outs: []
+  spacy_version: 3.1.1
+  spacy_git_version: Unknown
+analyse:
+  cmd: python -m spacy run analyse
+  script:
+    - python scripts/analyze_reviews.py training/healthsea/config_trf/ data/healthsea/analyzed_reviews.json
+      0 100
+  deps: []
+  outs: []
+  spacy_version: 3.1.1
+  spacy_git_version: Unknown
+assemble_tok2vec:
+  cmd: python -m spacy run assemble_tok2vec
+  script:
+    - python -m spacy assemble configs/pretrain/config.cfg training/healthsea/tok2vec/
+      --paths.init_tok2vec training/pretrain/model15.bin
+  deps: []
+  outs: []
+  spacy_version: 3.1.1
+  spacy_git_version: Unknown
+clustering:
+  cmd: python -m spacy run clustering
+  script:
+    - python scripts/vectors/calculate_vectors.py data/healthsea/scored_reviews.json
+      training/healthsea/tok2vec/ data/pretrain/condition_vectors.json 0
+  deps: []
+  outs: []
+  spacy_version: 3.1.1
+  spacy_git_version: Unknown
+calculate_vectors:
+  cmd: python -m spacy run calculate_vectors
+  script:
+    - python scripts/vectors/calculate_vectors.py data/healthsea/scored_reviews.json
+      training/healthsea/tok2vec/ data/pretrain/condition_vectors.json data/pretrain/benefit_vectors.json
+      0
+  deps: []
+  outs: []
+  spacy_version: 3.1.1
+  spacy_git_version: Unknown
+cluster_vectors:
+  cmd: python -m spacy run cluster_vectors
+  script:
+    - python scripts/vectors/cluster_vectors.py data/healthsea/scored_reviews.json
+      data/pretrain/condition_vectors.json data/pretrain/benefit_vectors.json data/healthsea/scored_clustered_reviews.json
+      0.95 1000
+  deps: []
+  outs: []
+  spacy_version: 3.1.1
+  spacy_git_version: Unknown
+group_reviews:
+  cmd: python -m spacy run group_reviews
+  script:
+    - python scripts/grouping/group_reviews.py data/healthsea/scored_clustered_reviews.json
+      data/healthsea/products.json data/healthsea/substances_per_product.json data/healthsea/healthsea_products.json
+      data/healthsea/healthsea_substance.json
+  deps: []
+  outs: []
+  spacy_version: 3.1.1
+  spacy_git_version: Unknown
+group_conditions:
+  cmd: python -m spacy run group_conditions
+  script:
+    - python scripts/grouping/group_condition.py data/healthsea/healthsea_products.json
+      data/healthsea/healthsea_substance.json data/healthsea/healthsea_condition.json
+  deps: []
+  outs: []
   spacy_version: 3.1.1
   spacy_git_version: Unknown
