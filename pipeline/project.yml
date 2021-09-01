@@ -81,6 +81,12 @@ commands:
       - "python -m prodigy data-to-spacy data/ner/ -n ${vars.prodigy.database_ner} -es ${vars.eval_split}"
       - "python -m prodigy db-out ${vars.prodigy.database_ner} assets/ner/"
 
+  - name: "analyze_ner_data"
+    help: "Perform analysis on the annotation for ner"
+    script:
+      - "python scripts/parse_ner_data.py assets/ner/${vars.prodigy.database_ner}.jsonl"
+
+
   - name: "train_ner"
     help: "Train NER"
     script:
@@ -179,7 +185,7 @@ commands:
   - name: "cluster_vectors"
     help: "Cluster entities based on similarity"
     script:
-      - "python scripts/vectors/cluster_vectors.py data/healthsea/scored_reviews.json data/pretrain/condition_vectors.json data/pretrain/benefit_vectors.json data/healthsea/scored_clustered_reviews.json 0.95 1000"
+      - "python scripts/vectors/cluster_vectors.py data/healthsea/scored_reviews.json data/pretrain/condition_vectors.json data/pretrain/benefit_vectors.json data/healthsea/scored_clustered_reviews.json 0.88 1000"
 
   - name: "group_reviews"
     help: "Group review to their products and calculate relevance score"

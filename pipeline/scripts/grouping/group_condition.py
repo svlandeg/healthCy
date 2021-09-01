@@ -16,8 +16,8 @@ def main(product_path: Path, substance_path: Path, output_path: Path):
 
     substance = {}
     with open(substance_path) as reader:
-        products = json.load(reader)
-    msg.info(f"Dataset with {len(products)} substances loaded")
+        substance = json.load(reader)
+    msg.info(f"Dataset with {len(substance)} substances loaded")
 
     healthsea_conditions = {}
 

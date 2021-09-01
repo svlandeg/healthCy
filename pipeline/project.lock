@@ -255,3 +255,11 @@ group_conditions:
   outs: []
   spacy_version: 3.1.1
   spacy_git_version: Unknown
+analyze_ner_data:
+  cmd: python -m spacy run analyze_ner_data
+  script:
+    - python scripts/parse_ner_data.py assets/ner/ner_condition_benefit_2.jsonl
+  deps: []
+  outs: []
+  spacy_version: 3.1.1
+  spacy_git_version: Unknown

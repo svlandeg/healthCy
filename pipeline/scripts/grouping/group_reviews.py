@@ -75,7 +75,7 @@ def main(
                         "alias": review["effect"][c_key]["alias"],
                     }
                 product["effect"][c_key]["score"] += float(
-                    product["effect"][c_key]["score"]
+                    review["effect"][c_key]["score"]
                 )
                 product["effect"][c_key]["occurence"] += 1
 

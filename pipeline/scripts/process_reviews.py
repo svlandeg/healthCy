@@ -40,7 +40,7 @@ def main(dataset_path: Path, customer_trustscore: Path, output: Path):
             customer_score = 1
 
         rating = int(review["rating"])
-        helpful_score = int(review["helpful"]) / 10
+        helpful_score = 1 + (int(review["helpful"]) / 10)
 
         if rating == 10:
             rating_score = -1
@@ -63,7 +63,7 @@ def main(dataset_path: Path, customer_trustscore: Path, output: Path):
                 base_score = 0.25
 
             review["effect"][condition]["score"] = (
-                base_score + helpful_score + rating_score
+                (base_score + rating_score) * helpful_score
             ) * customer_score
 
         review_scored[review["id"]] = review
