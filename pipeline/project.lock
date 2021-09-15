@@ -229,7 +229,7 @@ calculate_vectors:
 cluster_vectors:
   cmd: python -m spacy run cluster_vectors
   script:
-    - python scripts/vectors/cluster_vectors.py data/healthsea/scored_reviews.json
+    - python scripts/vectors/cluster_vectors_gpu.py data/healthsea/scored_reviews.json
       data/pretrain/condition_vectors.json data/pretrain/benefit_vectors.json data/healthsea/scored_clustered_reviews.json
       0.95 1000
   deps: []

@@ -185,7 +185,7 @@ commands:
   - name: "cluster_vectors"
     help: "Cluster entities based on similarity"
     script:
-      - "python scripts/vectors/cluster_vectors.py data/healthsea/scored_reviews.json data/pretrain/condition_vectors.json data/pretrain/benefit_vectors.json data/healthsea/scored_clustered_reviews.json 0.88 1000"
+      - "python scripts/vectors/cluster_vectors_gpu.py data/healthsea/scored_reviews.json data/pretrain/condition_vectors.json data/pretrain/benefit_vectors.json data/healthsea/scored_clustered_reviews.json 0.95 1000"
 
   - name: "group_reviews"
     help: "Group review to their products and calculate relevance score"
@@ -202,4 +202,7 @@ commands:
     script:
       - "streamlit run scripts/presentation/healthsea_streamlit.py "
 
-    
+  - name: "train_textcat_clauses"
+    help: "Train Textcat Clauses"
+    script:
+      - "python -m spacy train configs/textcat/config_get_clauses.cfg --output training/textcat/config_get_clauses/ -c scripts/custom_textcat/textcat_clauses_pipeline.py --paths.train data/textcat/${vars.train}.spacy --paths.dev data/textcat/${vars.dev}.spacy --gpu-id ${vars.gpu_id}"
